@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.1.1
+# Version:    0.1.2
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -16,6 +16,7 @@ function bt_keys_sync() {
 	else
 		cp "${system_hive}" "/tmp/SYSTEM_hive_win"
 	fi
+
 	echo
 	echo -e "\e[1;33mIn order to proceed you must grant root permissions\e[0m"
 	check_sudo
@@ -23,12 +24,12 @@ function bt_keys_sync() {
 		echo -e "\e[1;31mERROR: This script require \e[1;34mchntpw\e[1;31m. Use e.g. \e[1;34msudo apt install chntpw\e[0m"
 		exit 1
 	fi
-	sudo reged -x "/tmp/SYSTEM_hive_win" "HKEY_LOCAL_MACHINE\SYSTEM" "\\${control_set}\Services\BTHPORT\Parameters\Keys" "/tmp/bt_keys.reg"
 
+	#check_sudo
+	sudo reged -x "/tmp/SYSTEM_hive_win" "HKEY_LOCAL_MACHINE\SYSTEM" "\\${control_set}\Services\BTHPORT\Parameters\Keys" "/tmp/bt_keys.reg"
 	if [[ -f "/tmp/bt_keys.reg" ]] && cat -v "/tmp/bt_keys.reg" | sed 's/\^M//g' | grep -Fq "HKEY_LOCAL_MACHINE\SYSTEM\\${control_set}\Services\BTHPORT\Parameters\Keys"; then
 		#check_sudo
 		bt_controllers="$(sudo ls "/var/lib/bluetooth/" | grep -o -E "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
-
 		if [[ -z "${bt_controllers}" ]]; then
 			echo -e "\e[1;31m* no bluetooth controllers found\e[0m"
 			exit 1
@@ -43,18 +44,17 @@ function bt_keys_sync() {
 				bt_devices="$(sudo ls "/var/lib/bluetooth/${bt_controller}/" | grep -o -E "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
 				if [[ -z "${bt_devices}" ]]; then
 					echo -e "\e[1;31m* no paired bluetooth devices found\e[0m"
-					exit 1
+					continue
 				fi
-
 				win_controller="$(cat -v "/tmp/bt_keys.reg" | sed 's/\^M//g' | awk "/"${bt_controller_reg}"/,/^$/")"
 
 				for bt_device in ${bt_devices}; do
 					bt_device_reg="$(echo "${bt_device//:/$''}" | tr '[:upper:]' '[:lower:]')"
 					#check_sudo
-					bt_device_name="$(sudo cat "/var/lib/bluetooth/${bt_controller}/${bt_device}/info" | grep '^Alias=' | awk -F'=' '{print $2}')"
+					bt_device_info="$(sudo cat "/var/lib/bluetooth/${bt_controller}/${bt_device}/info")"
+					bt_device_name="$(echo "${bt_device_info}" | grep '^Alias=' | awk -F'=' '{print $2}')"
 					if [[ -z "${bt_device_name}" ]]; then
-						#check_sudo
-						bt_device_name="$(sudo cat "/var/lib/bluetooth/${bt_controller}/${bt_device}/info" | grep '^Name=' | awk -F'=' '{print $2}')"
+						bt_device_name="$(echo "${bt_device_info}" | grep '^Name=' | awk -F'=' '{print $2}')"
 					fi
 					echo "	- bluetooth device: ${bt_device} - ${bt_device_name}"
 					win_key="$(echo "${win_controller}" | grep "${bt_device_reg}" | awk -F':' '{print $2}')"
@@ -64,8 +64,7 @@ function bt_keys_sync() {
 					else
 						echo "		- windows key is ${win_key}"
 					fi
-					#check_sudo
-					linux_key="$(sudo cat "/var/lib/bluetooth/${bt_controller}/${bt_device}/info" | grep 'Key=' | awk -F'=' '{print $2}')"
+					linux_key="$(echo "${bt_device_info}" | grep 'Key=' | awk -F'=' '{print $2}')"
 					echo "		- linux key is   ${linux_key}"
 					if [[ -z "${win_key}" ]]; then
 						echo -e "\e[1;31m		* please pair this device in windows\e[0m"
@@ -109,7 +108,6 @@ function bt_keys_sync() {
 		echo -e "\e[1;31m* ${system_hive}: error while exporting windows SYSTEM registry hive to /tmp/bt_keys.reg\e[0m"
 		error='1'
 	fi
-
 }
 
 function check_sudo() {
@@ -146,7 +144,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.1.1
+# Version:    0.1.2
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -207,7 +205,6 @@ while getopts "p:c:h" opt; do
 done
 
 if [[ -z "${system_hive}" ]]; then
-	#givemehelp
 	echo -e "\e[1;31m* please enter the full path of the windows SYSTEM registry hive file\e[0m"
 	error='1'
 else
@@ -217,7 +214,6 @@ else
 		fi
 		bt_keys_sync
 	else
-		#givemehelp
 		echo -e "\e[1;31m* ${system_hive}: windows SYSTEM registry hive file not found\e[0m"
 		error='1'
 	fi
