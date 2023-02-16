@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.1.0
+# Version:    0.1.1
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -77,6 +77,7 @@ function bt_keys_sync() {
 								break
 							fi
 							if [[ "${win_key}" != "${linux_key}" ]]; then
+								updated='1'
 								echo -e "\e[1;33m		* updating key...\e[0m"
 								#check_sudo
 								sudo sed -i "s/${linux_key}/${win_key}/g" "/var/lib/bluetooth/${bt_controller}/${bt_device}/info"
@@ -92,6 +93,13 @@ function bt_keys_sync() {
 						done
 					fi
 				done
+
+				if [[ "${updated}" = '1' ]]; then
+					echo
+					echo -e "\e[1;32m- restarting bluetooth service...\e[0m"
+					#check_sudo
+					sudo systemctl restart bluetooth
+				fi
 
 			else
 				echo -e "\e[1;31m* bluetooth controller not found in windows\e[0m"
@@ -138,7 +146,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.1.0
+# Version:    0.1.1
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
