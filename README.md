@@ -36,13 +36,13 @@ The '--search' option will search for a windows SYSTEM registry hive file in /me
 
 example:
 
-`$ bt-keys-sync --path \"/media/myuser/Windows/Windows/System32/config/SYSTEM\"`
+`$ bt-keys-sync --path "/media/myuser/Windows/Windows/System32/config/SYSTEM"`
 
 With the '--control-set' option you can change the default 'ControlSet001' control set to check.
 
 example:
 
-`$ bt-keys-sync --control-set ControlSet002 --path \"/media/myuser/Windows/Windows/System32/config/SYSTEM\"`
+`$ bt-keys-sync --control-set ControlSet002 --path "/media/myuser/Windows/Windows/System32/config/SYSTEM"`
 
 ```
 Options:
