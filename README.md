@@ -1,6 +1,6 @@
 # bt-keys-sync
 
-# Version:    0.1.3
+# Version:    0.2.0
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -12,6 +12,7 @@ This is true for every system, whether they are linux or windows or both or wath
 This script is intended to be used in a linux\windows multi boot scenario. It will check the local linux paired bluetooth devices and update their pairing keys with the one exported from a valid windows SYSTEM registry hive file.
 
 This script require \"chntpw\". Install it e.g. with:
+
 `sudo apt install chntpw`
 
 ### INSTALL
@@ -29,25 +30,20 @@ sudo ln -s /opt/bt-keys-sync/bt-keys-sync.sh /usr/local/bin/bt-keys-sync
 Before running this script, please make sure the bluetooth devices are paired in both linux and windows and that windows is, in order, the last os in which you paired your bluetooth devices!
 Else, if not yet, pair the bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first), then boot into linux and proceed.
 
-Mount the windows partition, then note the path to the windows SYSTEM registry hive file, should be something like:
-\"<WINDOWS_MOUNTPOINT>/Windows/System32/config/SYSTEM\"
+Mount the windows partition, then run this script:
 
-The '--search' option will search for a windows SYSTEM registry hive file in /media and /mnt and if it finds a possible candidate, it will give you the path that you can use with the '--path' mandatory option.
+`$ bt-keys-sync`
 
-example:
+It will search for a windows SYSTEM registry hive file in `/media` and `/mnt`.
+If no windows SYSTEM registry hive file is found, then you must enter the full path.
 
-`$ bt-keys-sync --path "/media/myuser/Windows/Windows/System32/config/SYSTEM"`
+You can skip the automatic search by the option `--path`.
 
-With the '--control-set' option you can change the default 'ControlSet001' control set to check.
-
-example:
-
-`$ bt-keys-sync --control-set ControlSet002 --path "/media/myuser/Windows/Windows/System32/config/SYSTEM"`
+With the `--control-set` option you can change the control set to check. Default `ControlSet001`.
 
 ```
 Options:
--p, --path <system_hive_path>    Enter the full path of the windows SYSTEM registry hive file. Mandatory.
--c, --control-set <control_set>  Enter the control set to check. Default is 'ControlSet001'
--s, --search                     Search for a windows SYSTEM registry hive file in /media and /mnt
+-p, --path <system_hive_path>    Enter the full path of the windows SYSTEM registry hive file.
+-c, --control-set <control_set>  Enter the control set to check. Default is 'ControlSet001'.
 -h, --help                       Show this help.
 ```

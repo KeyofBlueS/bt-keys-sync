@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.1.3
+# Version:    0.2.0
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -104,7 +104,20 @@ function bt_keys_sync() {
 				echo -e "\e[1;31m* bluetooth controller not found in windows\e[0m"
 			fi
 		done
+		if [[ -f "/tmp/bt_keys.reg" ]]; then
+			#check_sudo
+			sudo rm "/tmp/bt_keys.reg"
+		fi
+		if [[ -f "/tmp/SYSTEM_hive_win" ]]; then
+			rm "/tmp/SYSTEM_hive_win"
+		fi
 
+		if [[ "${noerror}" != '1' ]]; then
+			echo
+			echo -e "\e[1;33mPlease make sure the bluetooth devices are paired in both linux and windows!\e[0m"
+		fi
+		
+		echo
 		echo -e "\e[1;32mNOTE:\e[0m"
 		echo -e "\e[1;32mBefore running this script, please make sure the bluetooth devices are paired in both linux and windows and that windows is, in order, the last os in which you paired your bluetooth devices!\e[0m"
 		echo -e "\e[1;32mElse, if not yet, pair the bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first), then boot into linux and run ${bt_keys_sync_name} again.\e[0m"
@@ -140,15 +153,67 @@ function timeout_sudo()	{
 
 function find_system_hive()	{
 
-	for start_path in '/media/' '/mnt/'; do
-		echo -e "\e[1;32m* searching in ${start_path} ...\e[0m"
-		system_hive_find="$(find "${start_path}" -type f -ipath '*/Windows/System32/config/*' -iname 'SYSTEM' 2>/dev/null)"
+	for search_path in '/media/' '/mnt/'; do
+		echo -e "\e[1;32m* searching in ${search_path} ...\e[0m"
+		system_hive_find="$(find "${search_path}" -type f -ipath '*/Windows/System32/config/*' -iname 'SYSTEM' 2>/dev/null)"
 		if [[ -n "${system_hive_find}" ]]; then
 			if [[ -z "${system_hive_found}" ]]; then
 				system_hive_found="${system_hive_find}"
 			else
 				system_hive_found+="/n${system_hive_find}"
 			fi
+		fi
+	done
+
+	while true; do
+		#clear		
+		echo
+		if [[ -z "${system_hive_found}" ]]; then
+			echo -e "\e[1;31m- no results while searching for windows SYSTEM registry hive file\e[0m"
+			while true; do
+				echo -e "\e[1;32m* please enter the full path of the windows SYSTEM registry hive file:\e[0m"
+				echo ' 0) Exit'
+				read -p " > " system_hive
+				if echo "${system_hive}" | grep -Eixq "(exit|e|quit|q|0)"; then
+					exit 0
+				else
+					if [[ -f "${system_hive}" ]]; then
+						break 2
+					else
+						echo -e "\e[1;31m* ${system_hive}: file not found\e[0m"
+						echo
+						sleep 2
+					fi
+				fi
+			done
+		else
+			echo -e "\e[1;32m* please select a windows SYSTEM registry hive file:\e[0m"
+		fi
+		local i='0'
+		echo ' 0) Exit'
+		while IFS=, read -r exp_path; do
+			if [[ -n "${exp_path}" ]]; then
+				i=$((i + 1))
+				sp1=' '
+				if [[ "${i}" -gt 9 ]]; then
+					unset sp1
+				fi
+				path=${exp_path}
+				echo -e "${sp1}${i}) ${path}"
+			fi
+		done <<< "${system_hive_found}"
+		unset selected_path
+		echo
+		read -rp " choose> " selected_path
+		if [[ ! "${selected_path}" =~ ^[[:digit:]]+$ ]] || [[ "${selected_path}" -gt "${i}" ]] || [[ "${selected_path}" -lt 0 ]]; then
+			echo
+			echo -e "\e[1;31mInvalid choice!\e[0m"
+				sleep 1
+		elif [[ "${selected_path}" -eq 0 ]]; then
+			exit 0
+		else
+			system_hive="$(echo "${system_hive_found}" | sed -n "${selected_path}"p)"
+			break
 		fi
 	done
 }
@@ -158,7 +223,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.1.3
+# Version:    0.2.0
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -176,25 +241,19 @@ sudo apt install chntpw
 Before running this script, please make sure the bluetooth devices are paired in both linux and windows and that windows is, in order, the last os in which you paired your bluetooth devices!
 Else, if not yet, pair the bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first), then boot into linux and proceed.
 
-Mount the windows partition, then note the path to the windows SYSTEM registry hive file, should be something like:
-\"<WINDOWS_MOUNTPOINT>/Windows/System32/config/SYSTEM\"
+Mount the windows partition, then run this script:
+$ ${bt_keys_sync_name}
 
-The '--search' option will search for a windows SYSTEM registry hive file in /media and /mnt and if it finds a possible candidate, it will give you the path that you can use with the '--path' mandatory option.
+It will search for a windows SYSTEM registry hive file in /media and /mnt.
+If no windows SYSTEM registry hive file is found, then you must enter the full path.
 
-example:
+You can skip the automatic search by the option --path.
 
-$ ${bt_keys_sync_name} --path \"/media/myuser/Windows/Windows/System32/config/SYSTEM\"
-
-With the '--control-set' option you can change the default 'ControlSet001' control set to check.
-
-example:
-
-$ ${bt_keys_sync_name} --control-set ControlSet002 --path \"/media/myuser/Windows/Windows/System32/config/SYSTEM\"
+With the --control-set option you can change the control set to check. Default ControlSet001.
 
 Options:
--p, --path <system_hive_path>    Enter the full path of the windows SYSTEM registry hive file. Mandatory.
--c, --control-set <control_set>  Enter the control set to check. Default is 'ControlSet001'
--s, --search                     Search for a windows SYSTEM registry hive file in /media and /mnt
+-p, --path <system_hive_path>    Enter the full path of the windows SYSTEM registry hive file.
+-c, --control-set <control_set>  Enter the control set to check. Default is 'ControlSet001'.
 -h, --help                       Show this help.
 "
 }
@@ -205,26 +264,23 @@ if ! command -v "${bt_keys_sync_name}" > /dev/null; then
 fi
 export bt_keys_sync_name
 
-noerror='0'
+control_set='ControlSet001'
 
 for opt in "$@"; do
 	shift
 	case "$opt" in
 		'--path')			set -- "$@" '-p' ;;
 		'--control-set')	set -- "$@" '-c' ;;
-		'--search')			set -- "$@" '-s' ;;
 		'--help')			set -- "$@" '-h' ;;
 		*)					set -- "$@" "$opt"
 	esac
 done
 
-while getopts "p:c:sh" opt; do
+while getopts "p:c:h" opt; do
 	case ${opt} in
 		p ) system_hive="${OPTARG}"
 		;;
 		c ) control_set="${OPTARG}"
-		;;
-		s ) search='true'
 		;;
 		h ) givemehelp; exit 0
 		;;
@@ -233,39 +289,24 @@ while getopts "p:c:sh" opt; do
 	esac
 done
 
-if [[ -z "${system_hive}" ]]; then
-	echo -e "\e[1;31m* please enter the full path of the windows SYSTEM registry hive file\e[0m"
-	error='1'
+if [[ -z "${system_hive}" ]] || ! [[ -f "${system_hive}" ]]; then
+	find_system_hive
+fi
+
+if [[ -f "${system_hive}" ]]; then
+	bt_keys_sync
 else
-	if [[ -f "${system_hive}" ]]; then
-		if [[ -z "${control_set}" ]]; then
-			control_set='ControlSet001'
-		fi
-		bt_keys_sync
-	else
-		echo -e "\e[1;31m* ${system_hive}: windows SYSTEM registry hive file not found\e[0m"
-		error='1'
-	fi
+	echo -e "\e[1;31m* ${system_hive}: file not found\e[0m"
+	error='1'
 fi
 
 if [[ "${error}" = '1' ]]; then
 	echo -e "\e[1;31m* make sure you enter a valid windows SYSTEM registry hive file path\e[0m"
-	if [[ "${search}" = 'true' ]]; then
-		find_system_hive
-		if [[ -n "${system_hive_found}" ]]; then
-			echo -e "\e[1;31m- the following file could be a good candidate:\e[0m"
-			echo "${system_hive_found}"
-		else
-			echo -e "\e[1;31m- no results while searching for windows SYSTEM registry hive file\e[0m"
-		fi
-	else
-		givemehelp
-		exit 1
+	if [[ "${control_set}" != 'ControlSet001' ]]; then
+		echo -e "\e[1;31m* make sure you enter a valid control set\e[0m"
 	fi
-elif [[ "${noerror}" = '0' ]]; then
-	echo
-	echo -e "\e[1;33mPlease make sure the bluetooth devices are paired in both linux and windows!\e[0m"
-	exit 0
-else
-	exit 0
+	givemehelp
+	exit 1
 fi
+
+exit 0
