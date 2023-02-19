@@ -39,7 +39,7 @@ If no windows SYSTEM registry hive file is found, then you must enter the full p
 
 You can skip the automatic search by the option `--path`.
 
-With the `--control-set` option you can change the control set to check. Default `ControlSet001`.
+With the `--control-set` option you can change the control set to check. Default is `ControlSet001`.
 
 ```
 Options:
