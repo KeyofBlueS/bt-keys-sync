@@ -37,7 +37,7 @@ Mount the windows partition (make sure you have read\write access to it), then r
 `$ bt-keys-sync`
 
 It will search for a windows SYSTEM registry hive file in `/media` and `/mnt`.
-If no windows SYSTEM registry hive file is found, then you must enter the full path (usually is something like `"<windows_mount_point>Windows/System32/config/SYSTEM"`).
+If no windows SYSTEM registry hive file is found, then you must enter the full path (usually is something like `"<windows_mount_point>/Windows/System32/config/SYSTEM"`).
 
 You can skip the automatic search by the option `--path`.
 
