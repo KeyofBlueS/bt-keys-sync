@@ -14,7 +14,7 @@ This script is intended to be used in a linux\windows multi boot scenario. It wi
 Importing the bluetooth pairing keys from windows to linux is a safe procedure.
 This could not be true for the opposite, importing the bluetooth pairing keys from linux to windows is risky as it could mess with the windows registry, so the recommended procedure is to pair your bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys, then boot into linux and run `bt-keys-sync` and always choose \"`windows key`\" when prompted \"`which pairing key you want to use?`\" (or use option `--windows-keys`).
 
-If you decide to import the bluetooth pairing keys from linux to windows `(this has been tested on windows 10 only)`, at your own risk, a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
+If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows `(this has been tested on windows 10 only)` a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
 
 This script require \"chntpw\". Install it e.g. with:
 
