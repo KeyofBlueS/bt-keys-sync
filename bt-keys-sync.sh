@@ -521,7 +521,6 @@ if [[ -f "${system_hive}" ]]; then
 			exit 1
 		fi
 	fi
-	echo "system_hive_permission ${system_hive_permission}"
 	bt_keys_sync
 else
 	echo -e "\e[1;31m* ${system_hive}: file not found\e[0m"
