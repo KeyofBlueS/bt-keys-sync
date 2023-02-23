@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.0
+# Version:    0.3.1
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -163,8 +163,17 @@ function bt_keys_sync_ask() {
 			skip='true'
 			break
 		elif [[ "${selected_key}" -eq '1' ]]; then
-			bt_keys_sync_from_linux
-			break
+			if [[ "${system_hive_permission}" = 'rw' ]]; then
+				bt_keys_sync_from_linux
+				break
+			else
+				echo
+				echo -e "\e[1;31m		* ${system_hive}: you don't have write permission\e[0m"
+				echo -e "\e[1;31m		* you will only be able to import bluetooth pairing keys from windows to linux, not the opposite\e[0m"
+				echo -e "\e[1;31m		* make sure you have read\write access\e[0m"
+				echo
+				sleep '1'
+			fi
 		elif [[ "${selected_key}" -eq '2' ]]; then
 			bt_keys_sync_from_windows
 			break
@@ -254,7 +263,7 @@ function bt_keys_sync() {
 				echo -e "${bt_devices_sync_from_linux}"
 				echo -e "\e[1;31mThis procedure is risky as it could mess with the windows registry.\e[0m"
 				echo -e "\e[1;31mThe os in wich you last paired these devices has the newer working keys, so the recommended procedure is to boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys, then boot into linux and run ${bt_keys_sync_name} and always choose \"windows key\" when prompted \"which pairing key you want to use?\" (or use option --windows-keys).\e[0m"
-				echo -e "\e[1;31mIf you decide to proceed, at your own risk (this has been tested on windows 10 only), a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.\e[0m"
+				echo -e "\e[1;31mIf you, at your own risk, decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only) a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.\e[0m"
 				while true; do
 					echo
 					echo -e "\e[1;31m- do you want to import the linux bluetooth pairing keys to the windows SYSTEM registry hive?\e[0m"
@@ -278,7 +287,7 @@ function bt_keys_sync() {
 							echo
 							echo -e "\e[1;31m- importing the linux bluetooth pairing keys to the windows SYSTEM registry hive...\e[0m"
 							#check_sudo
-							sudo reged -IC "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "${tmp_dir}/${tmp_reg}"
+							sudo reged -ICN "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "${tmp_dir}/${tmp_reg}"
 							cp "${tmp_dir}/${tmp_hive}" "${system_hive}"
 							break
 						else
@@ -408,7 +417,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.0
+# Version:    0.3.1
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -421,7 +430,7 @@ This script is intended to be used in a linux\windows multi boot scenario. It wi
 
 Importing the bluetooth pairing keys from windows to linux is a safe procedure.
 This could not be true for the opposite, importing the bluetooth pairing keys from linux to windows is risky as it could mess with the windows registry, so the recommended procedure is to pair your bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys, then boot into linux and run ${bt_keys_sync_name} and always choose \"windows key\" when prompted \"which pairing key you want to use?\" (or use option --windows-keys).
-If you decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only), at your own risk, a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
+If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only) a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
 
 This script require \"chntpw\". Install it e.g. with:
 sudo apt install chntpw
@@ -431,7 +440,7 @@ Mount the windows partition (make sure you have read\write access to it), then r
 $ ${bt_keys_sync_name}
 
 It will search for a windows SYSTEM registry hive file in /media and /mnt.
-If no windows SYSTEM registry hive file is found, then you must enter the full path.
+If no windows SYSTEM registry hive file is found, then you must enter the full path (usually is something like \"<windows_mount_point>/Windows/System32/config/SYSTEM\").
 
 You can skip the automatic search by the option --path.
 
@@ -496,6 +505,22 @@ if [[ -z "${system_hive}" ]] || ! [[ -f "${system_hive}" ]]; then
 fi
 
 if [[ -f "${system_hive}" ]]; then
+	if [[ -r "${system_hive}" ]]; then
+		system_hive_permission='r'
+	else
+		echo -e "\e[1;31m* ${system_hive}: you don't have read permission\e[0m"
+		exit 1
+	fi
+	if [[ -w "${system_hive}" ]]; then
+		system_hive_permission+="w"
+	else
+		echo -e "\e[1;31m* ${system_hive}: you don't have write permission\e[0m"
+		echo -e "\e[1;31m* you will only be able to import bluetooth pairing keys from windows to linux, not the opposite\e[0m"
+		if [[ "${keys_from}" = 'linux' ]]; then
+			echo -e "\e[1;31m* make sure you have read\write access\e[0m"
+			exit 1
+		fi
+	fi
 	bt_keys_sync
 else
 	echo -e "\e[1;31m* ${system_hive}: file not found\e[0m"
