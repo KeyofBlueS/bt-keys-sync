@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.1
+# Version:    0.3.2
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -44,7 +44,7 @@ function check_bt_devices() {
 
 	unset bt_devices_windows
 	if [[ -n "${bt_controller_windows}" ]]; then
-		bt_devices_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}"/,/^$/" | awk -F'"' '{print $2}' | grep -Eo "^([[:xdigit:]]){12}$")"
+		bt_devices_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | awk -F'"' '{print $2}' | grep -Eo "^([[:xdigit:]]){12}$")"
 	fi
 
 	bt_devices_reg="${bt_devices_linux//:/$''}\n${bt_devices_windows}"
@@ -56,11 +56,29 @@ function check_bt_devices() {
 		bt_device_linux="$(echo "${bt_devices_linux}" | grep "${bt_device_macaddr}")"
 		bt_device_windows="$(echo "${bt_devices_windows}" | grep "${bt_device}")"
 
-		#check_sudo
-		bt_device_info="$(sudo cat "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info" 2>/dev/null)"
-		bt_device_name="$(echo "${bt_device_info}" | grep '^Alias=' | awk -F'=' '{print $2}')"
-		if [[ -z "${bt_device_name}" ]]; then
-			bt_device_name="$(echo "${bt_device_info}" | grep '^Name=' | awk -F'=' '{print $2}')"
+		if [[ -n "${bt_device_linux}" ]]; then
+			#check_sudo
+			bt_device_info="$(sudo cat "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info" 2>/dev/null)"
+			bt_device_name="$(echo "${bt_device_info}" | grep '^Alias=' | awk -F'=' '{print $2}')"
+			if [[ -z "${bt_device_name}" ]]; then
+				bt_device_name="$(echo "${bt_device_info}" | grep '^Name=' | awk -F'=' '{print $2}')"
+			fi
+		elif [[ -n "${bt_device_windows}" ]]; then
+			if [[ "${tmp_devs_deployed}" != 'true' ]]; then
+				tmp_devs_deployed='true'
+				#check_sudo
+				sudo reged -x "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "\\${control_set}\Services\BTHPORT\Parameters\Devices" "${tmp_dir}/${tmp_devs}" 2>&1>/dev/null
+				bt_devices_info_reg="$(cat -v "${tmp_dir}/${tmp_devs}" | sed 's/\^M//g')"
+			fi
+			bt_device_info_reg="$(echo "${bt_devices_info_reg}" | awk "/"${bt_device_windows}]"/,/^$/")"
+			bt_device_name="$(echo "${bt_device_info_reg}" | grep -F '"FriendlyName"=' | grep -Eo "([[:xdigit:]]{1,2},)+[[:xdigit:]]{2}$")"
+			if [[ -z "${bt_device_name}" ]]; then
+				bt_device_name="$(echo "${bt_device_info_reg}" | grep -F '"Name"=' | grep -Eo "([[:xdigit:]]{1,2},)+[[:xdigit:]]{2}$")"
+			fi
+			until [[ "${bt_device_name:(-3)}" != ',00' ]]; do
+				bt_device_name="${bt_device_name::-3}"
+			done
+			bt_device_name="$(echo -e "\x${bt_device_name//,/$'\x'}")"
 		fi
 		echo
 		echo "	\- bluetooth device: ${bt_device_macaddr} - ${bt_device_name}"
@@ -72,7 +90,7 @@ function check_bt_devices() {
 			echo -e "\e[1;31m		* bluetooth device not found in linux\e[0m"
 			nokey='1'
 		else
-			key_linux="$(echo "${bt_device_info}" | grep 'Key=' | grep -Eo "([[:xdigit:]]){32}$")"
+			key_linux="$(echo "${bt_device_info}" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
 			if [[ -z "${key_linux}" ]]; then
 				nokey='1'
 				echo "		- linux key not found"
@@ -84,7 +102,7 @@ function check_bt_devices() {
 			echo -e "\e[1;31m		* bluetooth device not found in windows\e[0m"
 			nokey='1'
 		else
-			key_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+			key_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
 			key_windows="$(echo ${key_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
 			if [[ -z "${key_windows}" ]]; then
 				nokey='1'
@@ -417,7 +435,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.1
+# Version:    0.3.2
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -464,6 +482,7 @@ export bt_keys_sync_name
 
 tmp_dir='/tmp'
 tmp_reg='bt_keys.reg'
+tmp_devs='bt_devs.reg'
 tmp_hive='SYSTEM_hive_win'
 control_set='ControlSet001'
 keys_ask='true'
