@@ -475,7 +475,7 @@ Options:
 -c, --control-set <control_set>  Enter the control set to check. Default is 'ControlSet001'.
 -l, --linux-keys                 Import bluetooth pairing keys from linux to windows without asking.
 -w, --windows-keys               Import bluetooth pairing keys from windows to linux without asking.
--s, --only-list                  Only list bluetooth devices and pairing keys, don't do anything else.
+-o, --only-list                  Only list bluetooth devices and pairing keys, don't do anything else.
 -h, --help                       Show this help.
 "
 }
