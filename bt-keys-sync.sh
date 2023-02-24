@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.2
+# Version:    0.3.3
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -218,7 +218,7 @@ function bt_keys_sync_from_linux() {
 	bt_keys_sync_from_os='linux'
 	keys_updated_windows='1'
 	key_linux_reg="$(echo ${key_linux:0:2},${key_linux:2:2},${key_linux:4:2},${key_linux:6:2},${key_linux:8:2},${key_linux:10:2},${key_linux:12:2},${key_linux:14:2},${key_linux:16:2},${key_linux:18:2},${key_linux:20:2},${key_linux:22:2},${key_linux:24:2},${key_linux:26:2},${key_linux:28:2},${key_linux:30:2} | tr '[:upper:]' '[:lower:]')"
-	key_windows_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+	key_windows_reg="$(echo ${key_windows:0:2},${key_windows:2:2},${key_windows:4:2},${key_windows:6:2},${key_windows:8:2},${key_windows:10:2},${key_windows:12:2},${key_windows:14:2},${key_windows:16:2},${key_windows:18:2},${key_windows:20:2},${key_windows:22:2},${key_windows:24:2},${key_windows:26:2},${key_windows:28:2},${key_windows:30:2} | tr '[:upper:]' '[:lower:]')"
 	#check_sudo
 	sudo sed -i "s/\"${bt_device_windows}\"=hex:${key_windows_reg}/\"${bt_device_windows}\"=hex:${key_linux_reg}/g" "${tmp_dir}/${tmp_reg}"
 	key_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
@@ -236,17 +236,11 @@ function bt_keys_sync() {
 		exit 1
 	fi
 
-	if [[ -f "${tmp_dir}/${tmp_hive}" ]]; then
-		if ! cmp -s "${system_hive}" "${tmp_dir}/${tmp_hive}"; then
-			cp "${system_hive}" "${tmp_dir}/${tmp_hive}"
-		fi
-	else
-		cp "${system_hive}" "${tmp_dir}/${tmp_hive}"
-	fi
-
-	if ! [[ -f "${tmp_dir}/${tmp_hive}" ]]; then
-		echo -e "\e[1;31m* error while copying windows SYSTEM registry hive to ${tmp_dir}/${tmp_hive}\e[0m"
-		exit 1
+	if ! [[ -f "${tmp_dir}/${tmp_hive}" ]] || ! cmp -s "${system_hive}" "${tmp_dir}/${tmp_hive}"; then
+			if ! cp "${system_hive}" "${tmp_dir}/${tmp_hive}"; then
+				echo -e "\e[1;31m* error while copying windows SYSTEM registry hive to ${tmp_dir}/${tmp_hive}\e[0m"
+				exit 1
+			fi
 	fi
 
 	#check_sudo
@@ -259,8 +253,8 @@ function bt_keys_sync() {
 			fi
 			if [[ "${keys_updated_linux}" = '1' ]]; then
 				echo
-				echo -e "\e[1;32m---------------------------------------------------------------------\e[0m"
-				echo -e "\e[1;32m---------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
 				echo -e "\e[1;32mThe windows bluetooth pairing keys from the following devices have been imported to linux:\e[0m"
 				echo -e "${bt_devices_sync_from_windows}"
 				echo -e "\e[1;32mThe os in wich you last paired these devices has the newer working keys, so make sure that windows is the last os in which you paired these bluetooth devices!\e[0m"
@@ -269,14 +263,15 @@ function bt_keys_sync() {
 				echo -e "\e[1;32m- restarting bluetooth service...\e[0m"
 				#check_sudo
 				sudo systemctl restart bluetooth
-				echo -e "\e[1;32m---------------------------------------------------------------------\e[0m"
-				echo -e "\e[1;32m---------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;32m-------------------------------- done --------------------------------\e[0m"
+				echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
 			fi
 
 			if [[ "${keys_updated_windows}" = '1' ]]; then
 				echo
-				echo -e "\e[1;31m---------------------------------------------------------------------\e[0m"
-				echo -e "\e[1;31m---------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
 				echo -e "\e[1;31mThe linux bluetooth pairing keys from the following devices haven't yet been imported to the windows SYSTEM registry hive:\e[0m"
 				echo -e "${bt_devices_sync_from_linux}"
 				echo -e "\e[1;31mThis procedure is risky as it could mess with the windows registry.\e[0m"
@@ -300,14 +295,24 @@ function bt_keys_sync() {
 						echo
 						echo -e "\e[1;31m- making a windows SYSTEM registry hive file backup at:\e[0m"
 						echo "${system_hive}_${backup_date}.bak"
-						cp "${system_hive}" "${system_hive}_${backup_date}.bak"
-						if [[ -f "${system_hive}_${backup_date}.bak" ]]; then
+						if cp "${system_hive}" "${system_hive}_${backup_date}.bak"; then
 							echo
 							echo -e "\e[1;31m- importing the linux bluetooth pairing keys to the windows SYSTEM registry hive...\e[0m"
 							#check_sudo
 							sudo reged -ICN "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "${tmp_dir}/${tmp_reg}"
-							cp "${tmp_dir}/${tmp_hive}" "${system_hive}"
-							break
+							if cp "${tmp_dir}/${tmp_hive}" "${system_hive}"; then
+								break
+							else
+								echo -e "\e[1;31m- error while importing the linux bluetooth pairing keys to the windows SYSTEM registry hive\e[0m"
+								echo -e "\e[1;31m- restoring backup\e[0m"
+								if cp "${system_hive}_${backup_date}.bak" "${system_hive}"; then
+									echo -e "\e[1;31m- backup restored\e[0m"
+									exit 1
+								else
+									echo -e "\e[1;31m- error while restoring the backup!\e[0m"
+									exit 1
+								fi
+							fi
 						else
 							echo -e "\e[1;31m- error while making the backup of the windows SYSTEM registry hive file\e[0m"
 							echo -e "\e[1;31m- aborting\e[0m"
@@ -315,8 +320,9 @@ function bt_keys_sync() {
 						fi
 					fi
 				done
-				echo -e "\e[1;31m---------------------------------------------------------------------\e[0m"
-				echo -e "\e[1;31m---------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
+				echo -e "\e[1;31m-------------------------------- done --------------------------------\e[0m"
+				echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
 			fi
 		else
 			echo -e "\e[1;31m* ${system_hive}: error while exporting windows SYSTEM registry hive to ${tmp_dir}/${tmp_reg}\e[0m"
@@ -435,7 +441,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.2
+# Version:    0.3.3
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
