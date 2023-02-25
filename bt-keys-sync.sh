@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.4
+# Version:    0.3.5
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -89,12 +89,10 @@ function check_bt_devices() {
 		if [[ -z "${bt_device_linux}" ]]; then
 			echo -e "\e[1;31m		* bluetooth device not found in linux. Please pair this device in linux.\e[0m"
 			nokey='1'
-			nokey_warn='1'
 		else
 			key_linux="$(echo "${bt_device_info}" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
 			if [[ -z "${key_linux}" ]]; then
 				nokey='1'
-				nokey_warn='1'
 				echo -e "\e[1;31m		* linux key not found. Please try to remove and pair again this device in linux.\e[0m"
 			else
 				echo "		- linux  key  is ${key_linux}"
@@ -103,19 +101,18 @@ function check_bt_devices() {
 		if [[ -z "${bt_device_windows}" ]]; then
 			echo -e "\e[1;31m		* bluetooth device not found in windows. Please pair this device in windows.\e[0m"
 			nokey='1'
-			nokey_warn='1'
 		else
 			key_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
 			key_windows="$(echo ${key_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
 			if [[ -z "${key_windows}" ]]; then
 				nokey='1'
-				nokey_warn='1'
 				echo -e "\e[1;31m		* windows key not found. Please try to remove and pair again this device in windows.\e[0m"
 			else
 				echo "		- windows key is ${key_windows}"
 			fi
 		fi
 		if [[ "${nokey}" = '1' ]]; then
+			nokey_warn='1'
 			continue
 		else
 			if [[ "${key_windows}" = "${key_linux}" ]]; then
@@ -286,10 +283,12 @@ function bt_keys_sync() {
 					echo
 					echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
-					echo -e "\e[1;32mThe windows bluetooth pairing keys from the following devices have been imported to linux:\e[0m"
+					echo -e "\e[1;32m- The windows bluetooth pairing keys from the following devices have been imported to linux:\e[0m"
 					echo -e "${bt_devices_sync_from_windows}"
-					echo -e "\e[1;32mThe os in wich you last paired these devices has the newer working keys, so make sure that windows is the last os in which you paired these bluetooth devices!\e[0m"
-					echo -e "\e[1;32mIf not, boot into windows and pair them there (if yet paired, remove them first), then boot into linux and run ${bt_keys_sync_name} again.\e[0m"
+					echo -e "\e[1;32m- The os in wich you last paired these devices has the newer working keys\e[0m"
+					echo -e "\e[1;32m  so make sure that windows is the last os in which you paired these bluetooth devices!\e[0m"
+					echo -e "\e[1;32m- If not, boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys\e[0m"
+					echo -e "\e[1;32m  then boot into linux and run ${bt_keys_sync_name} again.\e[0m"
 					echo
 					echo -e "\e[1;32m- restarting bluetooth service...\e[0m"
 					#check_sudo
@@ -303,11 +302,33 @@ function bt_keys_sync() {
 					echo
 					echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
-					echo -e "\e[1;31mThe linux bluetooth pairing keys from the following devices haven't yet been imported to the windows SYSTEM registry hive:\e[0m"
+					echo -e "\e[1;31m- The linux bluetooth pairing keys from the following devices haven't yet been imported to the windows SYSTEM registry hive:\e[0m"
 					echo -e "${bt_devices_sync_from_linux}"
-					echo -e "\e[1;31mThis procedure is risky as it could mess with the windows registry.\e[0m"
-					echo -e "\e[1;31mThe os in wich you last paired these devices has the newer working keys, so the recommended procedure is to boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys, then boot into linux and run ${bt_keys_sync_name} and always choose \"windows key\" when prompted \"which pairing key you want to use?\" (or use option --windows-keys).\e[0m"
-					echo -e "\e[1;31mIf you, at your own risk, decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only) a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.\e[0m"
+					echo -e "\e[1;31m- This procedure is risky as it could mess with the windows registry.\e[0m"
+					echo -e "\e[1;31m  The os in wich you last paired these devices has the newer working keys\e[0m"
+					echo -e "\e[1;31m  so the recommended procedure is to boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys\e[0m"
+					echo -e "\e[1;31m  then boot into linux, run ${bt_keys_sync_name} and always choose \"windows key\" when prompted \"which pairing key you want to use?\" (or use option --windows-keys).\e[0m"
+					echo
+					echo -e "\e[1;31m- If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only)\e[0m"
+					echo -e "\e[1;31m  a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.\e[0m"
+
+					if [[ -f "${system_hive%/*}/SOFTWARE" ]]; then
+						#check_sudo
+						wait $(sudo reged -x "${system_hive%/*}/SOFTWARE" "HKEY_LOCAL_MACHINE\SOFTWARE" "Microsoft\Windows NT\CurrentVersion" "${tmp_dir}/${tmp_ver}") 2>/dev/null
+						win_version="$(cat -v "${tmp_dir}/${tmp_ver}" | sed 's/\^M//g' | grep "\"ProductName\"" | awk -F'=' '{print $2}')"
+						win_version="${win_version//\"/$''}"
+						if [[ -n "${win_version}" ]]; then
+							echo
+							echo -e "\e[1;31m* Your windows version seems to be: ${win_version}\e[0m"
+						else
+							echo
+							echo -e "\e[1;31m* Unable to retrieve windows version!\e[0m"
+						fi
+					else
+						echo
+						echo -e "\e[1;31m* Unable to retrieve windows version!\e[0m"
+					fi
+
 					while true; do
 						echo
 						echo -e "\e[1;31m- do you want to import the linux bluetooth pairing keys to the windows SYSTEM registry hive?\e[0m"
@@ -456,6 +477,22 @@ function find_system_hive()	{
 	done
 }
 
+function cleaning() {
+
+	if [[ -f "${tmp_dir}/${tmp_reg}" ]]; then
+		#check_sudo
+		sudo rm "${tmp_dir}/${tmp_reg}"
+	fi
+	if [[ -f "${tmp_dir}/${tmp_devs}" ]]; then
+		#check_sudo
+		sudo rm "${tmp_dir}/${tmp_devs}"
+	fi
+	if [[ -f "${tmp_dir}/${tmp_ver}" ]]; then
+		#check_sudo
+		sudo rm "${tmp_dir}/${tmp_ver}"
+	fi
+}
+
 function check_keys_from()	{
 
 	if [[ -n "${keys_from}" ]]; then
@@ -473,7 +510,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.4
+# Version:    0.3.5
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -512,6 +549,8 @@ Options:
 "
 }
 
+trap cleaning EXIT
+
 bt_keys_sync_name="$(echo "${0}" | rev | awk -F'/' '{print $1}' | rev)"
 if ! command -v "${bt_keys_sync_name}" > /dev/null; then
 	bt_keys_sync_name="$(readlink -f "${0}")"
@@ -523,6 +562,7 @@ printf "\033]2;${bt_keys_sync_name}\a"
 tmp_dir='/tmp'
 tmp_reg='bt_keys.reg'
 tmp_devs='bt_devs.reg'
+tmp_ver='bt_ver.reg'
 tmp_hive='SYSTEM_hive_win'
 control_set='ControlSet001'
 keys_ask='true'
