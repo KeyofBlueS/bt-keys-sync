@@ -1,6 +1,6 @@
 # bt-keys-sync
 
-# Version:    0.3.4
+# Version:    0.3.5
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
