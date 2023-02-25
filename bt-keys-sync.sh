@@ -95,7 +95,7 @@ function check_bt_devices() {
 			if [[ -z "${key_linux}" ]]; then
 				nokey='1'
 				nokey_warn='1'
-				echo -e "\e[1;31m		* linux key not found. Please try to remove an pair again this device in linux.\e[0m"
+				echo -e "\e[1;31m		* linux key not found. Please try to remove and pair again this device in linux.\e[0m"
 			else
 				echo "		- linux  key  is ${key_linux}"
 			fi
@@ -110,7 +110,7 @@ function check_bt_devices() {
 			if [[ -z "${key_windows}" ]]; then
 				nokey='1'
 				nokey_warn='1'
-				echo -e "\e[1;31m		* windows key not found. Please try to remove an pair again this device in windows.\e[0m"
+				echo -e "\e[1;31m		* windows key not found. Please try to remove and pair again this device in windows.\e[0m"
 			else
 				echo "		- windows key is ${key_windows}"
 			fi
