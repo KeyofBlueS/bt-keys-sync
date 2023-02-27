@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.6
+# Version:    0.3.7
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -527,9 +527,26 @@ function cleaning() {
 			sudo rm "${tmp_dir}/${tmp_ver}"
 		fi
 	fi
+	sudo -k
+
+	if ! grep -Eqs "^Exec=${bt_keys_sync_name}$" $HOME/.local/share/applications/bt-keys-sync.desktop && [[ "${EUID}" != '0' ]]; then
+		echo
+		echo -e "\e[1;34m-----------------------------------------------------------------------------\e[0m"
+		echo -e "\e[1;34m* Creating bt-keys-sync menu item in Categories AudioVideo, Audio and Utility\e[0m"
+		echo -e "\e[1;34m-----------------------------------------------------------------------------\e[0m"
+		sh -c 'echo "[Desktop Entry]
+Name=bt-keys-sync
+Exec="${bt_keys_sync_name}"
+Icon=bluetooth
+Terminal=true
+Type=Application
+StartupNotify=false
+Categories=AudioVideo;Audio;Utility;
+" > $HOME/.local/share/applications/bt-keys-sync.desktop'
+	fi
+
 	echo
 	echo -e "\e[1;32mPress ENTER to exit\e[0m"
-	sudo -k
 	if read -sr _e; then
 		exit 1
 	fi
@@ -552,7 +569,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.6
+# Version:    0.3.7
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -566,6 +583,10 @@ This script is intended to be used in a linux\windows multi boot scenario. It wi
 Importing the bluetooth pairing keys from windows to linux is a safe procedure.
 This could not be true for the opposite, importing the bluetooth pairing keys from linux to windows is risky as it could mess with the windows registry, so the recommended procedure is to pair your bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys, then boot into linux and run ${bt_keys_sync_name} and always choose \"windows key\" when prompted \"which pairing key you want to use?\" (or use option --windows-keys).
 If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only) a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
+
+### About Bluetooth Low Energy (BLE)
+Currently not supported. Please take a look here:
+https://github.com/KeyofBlueS/bt-keys-sync/issues/13
 
 This script require \"chntpw\". Install it e.g. with:
 sudo apt install chntpw
