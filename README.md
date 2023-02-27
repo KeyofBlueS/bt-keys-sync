@@ -1,6 +1,6 @@
 # bt-keys-sync
 
-# Version:    0.3.6
+# Version:    0.3.7
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -16,9 +16,9 @@ This could not be true for the opposite, importing the bluetooth pairing keys fr
 
 If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows `(this has been tested on windows 10 only)` a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
 
-This script require \"chntpw\". Install it e.g. with:
-
-`sudo apt install chntpw`
+### About Bluetooth Low Energy (BLE)
+Currently not supported. Please take a look here:
+https://github.com/KeyofBlueS/bt-keys-sync/issues/13
 
 ### INSTALL
 ```
@@ -30,6 +30,10 @@ sudo chmod 755 /opt/bt-keys-sync/bt-keys-sync.sh
 sudo chmod +x /opt/bt-keys-sync/bt-keys-sync.sh
 sudo ln -s /opt/bt-keys-sync/bt-keys-sync.sh /usr/local/bin/bt-keys-sync
 ```
+
+This script require \"chntpw\". Install it e.g. with:
+
+`sudo apt install chntpw`
 
 ### USAGE
 Mount the windows partition (make sure you have read\write access to it), then run this script:
