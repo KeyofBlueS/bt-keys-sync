@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.5
+# Version:    0.3.6
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -10,7 +10,7 @@
 
 function check_bt_controllers() {
 
-	#check_sudo
+	check_sudo
 	bt_controllers_linux="$(sudo ls "/var/lib/bluetooth/" | grep -Eo "^([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}$")"
 	bt_controllers_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | grep -F "HKEY_LOCAL_MACHINE\SYSTEM\\${control_set}\Services\BTHPORT\Parameters\Keys\\" | grep -Eo "([[:xdigit:]]){12}")"
 
@@ -38,7 +38,7 @@ function check_bt_devices() {
 
 	unset bt_devices_linux
 	if [[ -n "${bt_controller_linux}" ]]; then
-		#check_sudo
+		check_sudo
 		bt_devices_linux="$(sudo ls "/var/lib/bluetooth/${bt_controller_linux}" | grep -Eo "^([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}$")"
 	fi
 
@@ -57,7 +57,7 @@ function check_bt_devices() {
 		bt_device_windows="$(echo "${bt_devices_windows}" | grep "${bt_device}")"
 
 		if [[ -n "${bt_device_linux}" ]]; then
-			#check_sudo
+			check_sudo
 			bt_device_info="$(sudo cat "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info" 2>/dev/null)"
 			bt_device_name="$(echo "${bt_device_info}" | grep '^Alias=' | awk -F'=' '{print $2}')"
 			if [[ -z "${bt_device_name}" ]]; then
@@ -66,7 +66,7 @@ function check_bt_devices() {
 		elif [[ -n "${bt_device_windows}" ]]; then
 			if [[ "${tmp_devs_deployed}" != 'true' ]]; then
 				tmp_devs_deployed='true'
-				#check_sudo
+				check_sudo
 				sudo reged -x "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "\\${control_set}\Services\BTHPORT\Parameters\Devices" "${tmp_dir}/${tmp_devs}" 2>&1>/dev/null
 				bt_devices_info_reg="$(cat -v "${tmp_dir}/${tmp_devs}" | sed 's/\^M//g')"
 			fi
@@ -209,9 +209,9 @@ function bt_keys_sync_from_windows() {
 	echo -e "\e[1;33m		* updating linux key...\e[0m"
 	bt_keys_sync_from_os='windows'
 	keys_updated_linux='1'
-	#check_sudo
+	check_sudo
 	sudo sed -i "s/${key_linux}/${key_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
-	#check_sudo
+	check_sudo
 	bt_device_info="$(sudo cat "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info" 2>/dev/null)"
 	key_linux="$(echo "${bt_device_info}" | grep 'Key=' | grep -Eo "([[:xdigit:]]){32}$")"
 	echo "		- linux  key  is ${key_linux}"
@@ -224,7 +224,7 @@ function bt_keys_sync_from_linux() {
 	keys_updated_windows='1'
 	key_linux_reg="$(echo ${key_linux:0:2},${key_linux:2:2},${key_linux:4:2},${key_linux:6:2},${key_linux:8:2},${key_linux:10:2},${key_linux:12:2},${key_linux:14:2},${key_linux:16:2},${key_linux:18:2},${key_linux:20:2},${key_linux:22:2},${key_linux:24:2},${key_linux:26:2},${key_linux:28:2},${key_linux:30:2} | tr '[:upper:]' '[:lower:]')"
 	key_windows_reg="$(echo ${key_windows:0:2},${key_windows:2:2},${key_windows:4:2},${key_windows:6:2},${key_windows:8:2},${key_windows:10:2},${key_windows:12:2},${key_windows:14:2},${key_windows:16:2},${key_windows:18:2},${key_windows:20:2},${key_windows:22:2},${key_windows:24:2},${key_windows:26:2},${key_windows:28:2},${key_windows:30:2} | tr '[:upper:]' '[:lower:]')"
-	#check_sudo
+	check_sudo
 	sudo sed -i "s/\"${bt_device_windows}\"=hex:${key_windows_reg}/\"${bt_device_windows}\"=hex:${key_linux_reg}/g" "${tmp_dir}/${tmp_reg}"
 	key_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
 	key_windows="$(echo ${key_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
@@ -233,7 +233,6 @@ function bt_keys_sync_from_linux() {
 
 function bt_keys_sync() {
 
-	echo -e "\e[1;33mIn order to proceed you must grant root permissions\e[0m"
 	check_sudo
 	if ! sudo bash -c "command -v reged" >/dev/null; then
 		echo -e "\e[1;31mERROR: This script require \e[1;34mchntpw\e[1;31m. Use e.g. \e[1;34msudo apt install chntpw\e[0m"
@@ -247,7 +246,7 @@ function bt_keys_sync() {
 			fi
 	fi
 
-	#check_sudo
+	check_sudo
 	if sudo reged -x "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "\\${control_set}\Services\BTHPORT\Parameters\Keys" "${tmp_dir}/${tmp_reg}"; then
 		if [[ -f "${tmp_dir}/${tmp_reg}" ]] && cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | grep -Fq "HKEY_LOCAL_MACHINE\SYSTEM\\${control_set}\Services\BTHPORT\Parameters\Keys"; then
 			check_bt_controllers
@@ -291,7 +290,7 @@ function bt_keys_sync() {
 					echo -e "\e[1;32m  then boot into linux and run ${bt_keys_sync_name} again.\e[0m"
 					echo
 					echo -e "\e[1;32m- restarting bluetooth service...\e[0m"
-					#check_sudo
+					check_sudo
 					sudo systemctl restart bluetooth
 					echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;32m-------------------------------- done --------------------------------\e[0m"
@@ -313,7 +312,7 @@ function bt_keys_sync() {
 					echo -e "\e[1;31m  a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.\e[0m"
 
 					if [[ -f "${system_hive%/*}/SOFTWARE" ]]; then
-						#check_sudo
+						check_sudo
 						wait $(sudo reged -x "${system_hive%/*}/SOFTWARE" "HKEY_LOCAL_MACHINE\SOFTWARE" "Microsoft\Windows NT\CurrentVersion" "${tmp_dir}/${tmp_ver}") 2>/dev/null
 						win_version="$(cat -v "${tmp_dir}/${tmp_ver}" | sed 's/\^M//g' | grep "\"ProductName\"" | awk -F'=' '{print $2}')"
 						win_version="${win_version//\"/$''}"
@@ -350,7 +349,7 @@ function bt_keys_sync() {
 							if cp "${system_hive}" "${system_hive}_${backup_date}.bak"; then
 								echo
 								echo -e "\e[1;31m- importing the linux bluetooth pairing keys to the windows SYSTEM registry hive...\e[0m"
-								#check_sudo
+								check_sudo
 								sudo reged -ICN "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "${tmp_dir}/${tmp_reg}"
 								if cp "${tmp_dir}/${tmp_hive}" "${system_hive}"; then
 									break
@@ -389,25 +388,61 @@ function bt_keys_sync() {
 
 function check_sudo() {
 
-	while true; do
-		PROCESSNAME="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 12 ; echo '')"
-		timeout_sudo &
-		if bash -c "exec -a du_${PROCESSNAME} sudo -v > /dev/null 2>&1"; then
-			break
-		else
-			echo -en "\r\e[1;31mPermission denied! Press ENTER to exit or wait 5 seconds to retry\e[0m\c"
-			echo
-			if read -t '5' _e; then
-				exit 1
-			fi
+	if [[ "${sudouser}" != '1' ]]; then
+		current_sudo="$(date +%s)"
+		if [[ -z "${last_sudo}" ]] || [[ "$(echo "$((${current_sudo}-${last_sudo})) >= ${timestamp_timeout}" | bc -l)" = '1' ]]; then
+			while true; do
+				echo -e "\e[1;33mIn order to proceed you must grant root permissions\e[0m"
+				if sudo -v; then
+					if [[ -z "${timestamp_timeout}" ]]; then
+						timestamp_timeout_users="$(sudo cat /etc/sudoers | grep 'timestamp_timeout')"
+						if echo "${timestamp_timeout_users}" | grep 'timestamp_timeout' | grep -q "^Defaults:${myuser} \+"; then
+							timestamp_timeout="$(echo - | awk "{print "60" * "$(echo "${timestamp_timeout_users}" | grep 'timestamp_timeout' | grep "^Defaults:${myuser} \+" | awk -F'=' '{print $2}' | sort -g | head -n 1)"}")"
+						elif echo "${timestamp_timeout_users}" | grep 'timestamp_timeout' | grep -q "^Defaults \+"; then
+							timestamp_timeout="$(echo - | awk "{print "60" * "$(echo "${timestamp_timeout_users}" | grep 'timestamp_timeout' | grep '^Defaults \+' | awk -F'=' '{print $2}' | sort -g | head -n 1)"}")"
+						else
+							timestamp_timeout='900'
+						fi
+
+						sudo_timeout='1.2'
+						if [[ "$(echo "${timestamp_timeout} >= 0" | bc -l)" = '1' ]] && [[ "$(echo "${timestamp_timeout} < ${sudo_timeout}" | bc -l)" = '1' ]]; then
+							if [[ "${EUID}" != '0' ]]; then
+								if [[ "${timestamp_timeout}" = '0' ]]; then
+									echo -e "\e[1;31m* Your system is configured to ask for password at every sudo command.\e[0m"
+								else
+									echo -e "\e[1;31m* The timeout for sudo is too low.\e[0m"
+								fi
+								echo -e "\e[1;31m* Please run ${bt_keys_sync_name} as root.\e[0m"
+								force_exit='1'
+								exit 1
+							fi
+						fi
+
+						if [[ "$(echo "${timestamp_timeout} >= ${sudo_timeout}" | bc -l)" = '1' ]]; then
+							if [[ "${EUID}" = '0' ]]; then
+								echo -e "\e[1;31m* no need to run ${bt_keys_sync_name} as root.\e[0m"
+								echo -e "\e[1;31m* ${bt_keys_sync_name} will ask to grant root permission when needed.\e[0m"
+								echo -e "\e[1;31m* please run ${bt_keys_sync_name} as normal user.\e[0m"
+								exit 1
+							fi
+						fi
+
+						if [[ "${EUID}" = '0' ]]; then
+							echo -e "\e[1;33m* warning: ${bt_keys_sync_name} running as root.\e[0m"
+							sudouser='1'
+						fi
+					fi
+					last_sudo="$(date +%s)"
+					break
+				else
+					echo -e "\e[1;31mPermission denied! Press ENTER to exit or wait 5 seconds to retry\e[0m"
+					if read -t 5 _e; then
+						exit 1
+					fi
+				fi
+			done
 		fi
-	done
-}
-
-function timeout_sudo()	{
-
-	sleep '30'
-	pkill -f "du_${PROCESSNAME}"
+	fi
 }
 
 function find_system_hive()	{
@@ -478,18 +513,25 @@ function find_system_hive()	{
 }
 
 function cleaning() {
-
-	if [[ -f "${tmp_dir}/${tmp_reg}" ]]; then
-		#check_sudo
-		sudo rm "${tmp_dir}/${tmp_reg}"
+	if [[ "${force_exit}" != '1' ]]; then
+		if [[ -f "${tmp_dir}/${tmp_reg}" ]]; then
+			check_sudo
+			sudo rm "${tmp_dir}/${tmp_reg}"
+		fi
+		if [[ -f "${tmp_dir}/${tmp_devs}" ]]; then
+			check_sudo
+			sudo rm "${tmp_dir}/${tmp_devs}"
+		fi
+		if [[ -f "${tmp_dir}/${tmp_ver}" ]]; then
+			check_sudo
+			sudo rm "${tmp_dir}/${tmp_ver}"
+		fi
 	fi
-	if [[ -f "${tmp_dir}/${tmp_devs}" ]]; then
-		#check_sudo
-		sudo rm "${tmp_dir}/${tmp_devs}"
-	fi
-	if [[ -f "${tmp_dir}/${tmp_ver}" ]]; then
-		#check_sudo
-		sudo rm "${tmp_dir}/${tmp_ver}"
+	echo
+	echo -e "\e[1;32mPress ENTER to exit\e[0m"
+	sudo -k
+	if read -sr _e; then
+		exit 1
 	fi
 }
 
@@ -510,7 +552,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.5
+# Version:    0.3.6
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -559,6 +601,8 @@ export bt_keys_sync_name
 
 printf "\033]2;${bt_keys_sync_name}\a"
 
+sudo -k
+myuser="${USER}"
 tmp_dir='/tmp'
 tmp_reg='bt_keys.reg'
 tmp_devs='bt_devs.reg'
@@ -602,13 +646,6 @@ done
 echo
 echo '# bt-keys-sync'
 echo
-
-if [[ "${EUID}" -eq '0' ]]; then
-	echo -e "\e[1;31m* no need to run ${bt_keys_sync_name} as root.\e[0m"
-	echo -e "\e[1;31m* ${bt_keys_sync_name} will ask to grant root permission when needed.\e[0m"
-	echo -e "\e[1;31m* please run ${bt_keys_sync_name} as normal user.\e[0m"
-	exit 1
-fi
 
 if [[ -z "${system_hive}" ]] || ! [[ -f "${system_hive}" ]]; then
 	find_system_hive
