@@ -1,6 +1,6 @@
 # bt-keys-sync
 
-# Version:    0.3.7
+# Version:    0.3.8
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -17,8 +17,8 @@ This could not be true for the opposite, importing the bluetooth pairing keys fr
 If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows `(this has been tested on windows 10 only)` a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
 
 ### About Bluetooth Low Energy (BLE)
-Currently not supported. Please take a look here:
-https://github.com/KeyofBlueS/bt-keys-sync/issues/13
+Bluetooth Low Energy Device (BLE) can be detected, but key checks will be skipped.
+Please take a look here: https://github.com/KeyofBlueS/bt-keys-sync/issues/13
 
 ### INSTALL
 ```
