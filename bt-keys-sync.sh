@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.8
+# Version:    0.3.9
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -15,10 +15,10 @@ function check_bt_controllers() {
 
 	bt_controllers_reg="${bt_controllers_linux//:/$''}\n${bt_controllers_windows}"
 
-	bt_controllers="$(echo -e "${bt_controllers_reg}" | tr '[:upper:]' '[:lower:]' | sort | uniq)"
+	bt_controllers="$(echo -e "${bt_controllers_reg,,}" | sort -u)"
 
 	for bt_controller in ${bt_controllers}; do
-		bt_controller_macaddr="$(echo ${bt_controller:0:2}:${bt_controller:2:2}:${bt_controller:4:2}:${bt_controller:6:2}:${bt_controller:8:2}:${bt_controller:10:2} | tr '[:lower:]' '[:upper:]')"
+		bt_controller_macaddr="$(echo "${bt_controller^^}" | sed 's/.\{2\}/&:/g' | sed 's/.$//')"
 		bt_controller_linux="$(echo "${bt_controllers_linux}" | grep "${bt_controller_macaddr}")"
 		bt_controller_windows="$(echo "${bt_controllers_windows}" | grep "${bt_controller}")"
 		echo
@@ -43,17 +43,17 @@ function check_bt_devices() {
 
 	unset bt_devices_windows
 	if [[ -n "${bt_controller_windows}" ]]; then
-		bt_devices_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | awk -F'"' '{print $2}' | grep -Eo "^([[:xdigit:]]){12}$")\n"
+		bt_devices_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" 2>/dev/null | awk -F'"' '{print $2}' | grep -Eo "^([[:xdigit:]]){12}$")\n"
 		bt_devices_windows+="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | grep -F "HKEY_LOCAL_MACHINE\SYSTEM\\${control_set}\Services\BTHPORT\Parameters\Keys\\${bt_controller_windows}" | awk -F'\' '{print $9}' | grep -Eo "([[:xdigit:]]){12}")"
 		bt_devices_windows="$(echo -e "${bt_devices_windows}")"
 	fi
 
 	bt_devices_reg="${bt_devices_linux//:/$''}\n${bt_devices_windows}"
 
-	bt_devices="$(echo -e "${bt_devices_reg}" | tr '[:upper:]' '[:lower:]' | sort | uniq)"
+	bt_devices="$(echo -e "${bt_devices_reg,,}" | sort -u)"
 
 	for bt_device in ${bt_devices}; do
-		bt_device_macaddr="$(echo ${bt_device:0:2}:${bt_device:2:2}:${bt_device:4:2}:${bt_device:6:2}:${bt_device:8:2}:${bt_device:10:2} | tr '[:lower:]' '[:upper:]')"
+		bt_device_macaddr="$(echo "${bt_device^^}" | sed 's/.\{2\}/&:/g' | sed 's/.$//')"
 		bt_device_linux="$(echo "${bt_devices_linux}" | grep "${bt_device_macaddr}")"
 		bt_device_windows="$(echo "${bt_devices_windows}" | grep "${bt_device}")"
 
@@ -63,6 +63,9 @@ function check_bt_devices() {
 			bt_device_name="$(echo "${bt_device_info}" | grep '^Alias=' | awk -F'=' '{print $2}')"
 			if [[ -z "${bt_device_name}" ]]; then
 				bt_device_name="$(echo "${bt_device_info}" | grep '^Name=' | awk -F'=' '{print $2}')"
+			fi
+			if [[ -z "${bt_device_name}" ]]; then
+				bt_device_name='UNKWNOWN'
 			fi
 		elif [[ -n "${bt_device_windows}" ]]; then
 			if [[ "${tmp_devs_deployed}" != 'true' ]]; then
@@ -76,10 +79,14 @@ function check_bt_devices() {
 			if [[ -z "${bt_device_name}" ]]; then
 				bt_device_name="$(echo "${bt_device_info_devs_reg}" | grep -F '"Name"=' | grep -Eo "([[:xdigit:]]{1,2},)+[[:xdigit:]]{2}$")"
 			fi
-			until [[ "${bt_device_name:(-3)}" != ',00' ]]; do
-				bt_device_name="${bt_device_name::-3}"
-			done
-			bt_device_name="$(echo -e "\x${bt_device_name//,/$'\x'}")"
+			if [[ -n "${bt_device_name}" ]]; then
+				until [[ "${bt_device_name:(-3)}" != ',00' ]]; do
+					bt_device_name="${bt_device_name::-3}"
+				done
+				bt_device_name="$(echo -e "\x${bt_device_name//,/$'\x'}")"
+			else
+				bt_device_name='UNKWNOWN'
+			fi
 		fi
 		echo
 		echo "	\- bluetooth device: ${bt_device_macaddr} - ${bt_device_name}"
@@ -91,6 +98,12 @@ function check_bt_devices() {
 		unset key_ltk_linux
 		unset key_ediv_linux
 		unset key_rand_linux
+		unset key_lk_linux_reg
+		unset key_irk_linux_reg
+		unset key_lsk_linux_reg
+		unset key_ltk_linux_reg
+		unset key_ediv_linux_reg
+		unset key_rand_linux_reg
 		unset bt_device_type_windows
 		unset key_lk_windows
 		unset key_irk_windows
@@ -98,6 +111,12 @@ function check_bt_devices() {
 		unset key_ltk_windows
 		unset key_ediv_windows
 		unset key_rand_windows
+		unset key_lk_windows_reg
+		unset key_irk_windows_reg
+		unset key_lsk_windows_reg
+		unset key_ltk_windows_reg
+		unset key_ediv_windows_reg
+		unset key_rand_windows_reg
 		unset nokey
 		unset bt_device_type
 		if [[ -z "${bt_device_linux}" ]]; then
@@ -105,14 +124,23 @@ function check_bt_devices() {
 			nokey='1'
 		else
 			check_bt_device_type_linux
-			get_bt_keys_linux
+			if [[ "${bt_device_type_linux}" = 'standard' ]]; then # delete after BLE support will be implemented
+				get_bt_keys_linux
+			fi # delete after BLE support will be implemented
 		fi
 		if [[ -z "${bt_device_windows}" ]]; then
 			echo -e "\e[1;31m		* bluetooth device not found in windows. Please pair this device in windows.\e[0m"
 			nokey='1'
 		else
 			check_bt_device_type_windows
-			get_bt_keys_windows
+			if [[ "${bt_device_type_windows}" = 'standard' ]]; then
+				bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+			elif [[ "${bt_device_type_windows}" = 'ble' ]]; then
+				bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_device_windows}]"/,/^$/")"
+			fi
+			if [[ "${bt_device_type_windows}" = 'standard' ]]; then # delete after BLE support will be implemented
+				get_bt_keys_windows
+			fi # delete after BLE support will be implemented
 		fi
 		if [[ "${bt_device_type_linux}" = 'standard' ]] && [[ "${bt_device_type_windows}" = 'standard' ]]; then
 			bt_device_type='standard'
@@ -137,23 +165,10 @@ function check_bt_devices() {
 		else
 			compare_bt_keys
 			if [[ "${different}" != 'true' ]]; then
-					noerror='1'
-					echo -e "\e[1;32m		* keys are synced\e[0m"
+				noerror='1'
+				echo -e "\e[1;32m		* keys are synced\e[0m"
 			else
-				if [[ "${only_list}" = 'true' ]]; then
-					echo -e "\e[1;33m		* skipping this device\e[0m"
-					keys_not_synced='1'
-					bt_devices_not_synced+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
-					continue
-				else
-					unset bt_keys_sync_from_os
-					bt_keys_sync_common
-					if [[ "${bt_keys_sync_from_os}" = 'windows' ]]; then
-						bt_devices_sync_from_windows+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
-					elif [[ "${bt_keys_sync_from_os}" = 'linux' ]]; then
-						bt_devices_sync_from_linux+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
-					fi
-				fi
+				bt_keys_sync_common
 			fi
 		fi
 	done
@@ -191,11 +206,11 @@ function get_bt_keys_linux() {
 			echo "		- linux   LK   key is ${key_lk_linux}"
 		fi
 	elif [[ "${bt_device_type_linux}" = 'ble' ]]; then
-		key_irk_linux="$(echo "${bt_device_info}" | awk "/"\\[IdentityResolvingKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
-		key_lsk_linux="$(echo "${bt_device_info}" | awk "/"\\[LocalSignatureKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
-		key_ltk_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
-		key_ediv_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EDiv=' | grep -Eo "([[:digit:]]){5}$")"
-		key_rand_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Rand=' | grep -Eo "([[:digit:]]){20}$")"
+		key_irk_linux="$(echo "${bt_device_info}" | awk "/"\\[IdentityResolvingKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
+		key_lsk_linux="$(echo "${bt_device_info}" | awk "/"\\[LocalSignatureKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
+		key_ltk_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
+		key_ediv_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EDiv=' | grep -Eo "([[:digit:]])+$")" # to review
+		key_rand_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Rand=' | grep -Eo "([[:digit:]])+$")" # to review
 		if [[ -z "${key_irk_linux}" ]]; then
 			nokey='1'
 			echo -e "\e[1;31m		* linux   IRK  key not found. Please try to remove and pair again this device in linux.\e[0m"
@@ -232,8 +247,8 @@ function get_bt_keys_linux() {
 function get_bt_keys_windows() {
 
 	if [[ "${bt_device_type_windows}" = 'standard' ]]; then
-		key_lk_windows="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
-		key_lk_windows="$(echo ${key_lk_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
+		key_lk_windows_reg="${bt_device_info_keys_reg}"
+		key_lk_windows="$(echo ${key_lk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')"
 		if [[ -z "${key_lk_windows}" ]]; then
 			nokey='1'
 			echo -e "\e[1;31m		* windows LK   key not found. Please try to remove and pair again this device in windows.\e[0m"
@@ -241,19 +256,20 @@ function get_bt_keys_windows() {
 			echo "		- windows LK   key is ${key_lk_windows}"
 		fi
 	elif [[ "${bt_device_type_windows}" = 'ble' ]]; then
-		key_irk_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"IRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
-		key_irk_windows="$(echo ${key_irk_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
+		key_irk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"IRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
+		key_irk_windows="$(echo ${key_irk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
 
-		key_lsk_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"CSRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
-		key_lsk_windows="$(echo ${key_lsk_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
+		key_lsk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"CSRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
+		key_lsk_windows="$(echo ${key_lsk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
 
-		key_ltk_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"LTK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
-		key_ltk_windows="$(echo ${key_ltk_windows//,/$''} | tr '[:lower:]' '[:upper:]')"
+		key_ltk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"LTK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
+		key_ltk_windows="$(echo ${key_ltk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
+	
+		key_ediv_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"EDIV"' | awk -F':' '{print $2}')" # to review
 
-		#key_ediv_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"EDIV"' | grep -Eo "([[:digit:]]){5}$")" ############################## to be implemented
-		key_ediv_windows='to be implemented'
-		#key_rand_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"ERand"' | grep -Eo "([[:digit:]]){20}$")" ############################## to be implemented
-		key_rand_windows='to be implemented'
+		key_rand_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"ERand"' | awk -F':' '{print $2}')" # to review
+		key_rand_windows="$(echo "${key_rand_windows_reg}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | tr '[:lower:]' '[:upper:]')" # to review
+		key_rand_windows="$(echo "obase=10; ibase=16; ${key_rand_windows//' '/$''}" | bc)" # to review
 
 		if [[ -z "${key_irk_windows}" ]]; then
 			nokey='1'
@@ -316,19 +332,23 @@ function compare_bt_keys() {
 
 function bt_keys_sync_common() {
 
+	unset bt_keys_sync_from_os
 	retry='0'
 	while true; do
-		if [[ "${skip}" = 'true' ]]; then
-			unset skip
-			break
-		fi
-		if [[ "${retry}" -eq '10' ]]; then
-			echo -e "\e[1;31m		* error while updating the key!\e[0m"
+		if [[ "${only_list}" = 'true' ]] || [[ "${skip}" = 'true' ]] || [[ "${retry}" -eq '10' ]]; then
+			bt_devices_not_synced+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
+			if [[ "${only_list}" = 'true' ]] || [[ "${skip}" = 'true' ]]; then
+				echo -e "\e[1;33m		* skipping this device\e[0m"
+				unset skip
+			elif [[ "${retry}" -eq '10' ]]; then
+				echo -e "\e[1;31m		* error while updating the key!\e[0m"
+			fi
 			break
 		fi
 		if [[ "${different}" = 'true' ]]; then
 			if [[ "${keys_ask}" = 'true' ]]; then
 				bt_keys_sync_ask
+				retry='0'
 			elif [[ "${keys_from}" = 'linux' ]]; then
 				bt_keys_sync_from_linux
 			elif [[ "${keys_from}" = 'windows' ]]; then
@@ -339,6 +359,15 @@ function bt_keys_sync_common() {
 		if [[ "${different}" != 'true' ]]; then
 			echo -e "\e[1;32m		* keys are synced\e[0m"
 			noerror='1'
+			if [[ "${bt_keys_sync_from_os}" = 'windows' ]]; then
+				check_sudo
+				sudo cp "${tmp_dir}/${tmp_info_new}" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+				bt_devices_sync_from_windows+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
+			elif [[ "${bt_keys_sync_from_os}" = 'linux' ]]; then
+				check_sudo
+				sudo cp "${tmp_dir}/${tmp_reg_new}" "${tmp_dir}/${tmp_reg}"
+				bt_devices_sync_from_linux+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
+			fi
 			break
 		fi
 		retry="$(("${retry}" + 1))"
@@ -358,9 +387,6 @@ function bt_keys_sync_ask() {
 			echo -e "\e[1;31m		Invalid choice!\e[0m"
 				sleep '1'
 		elif [[ "${selected_key}" -eq '0' ]]; then
-			echo -e "\e[1;33m		* skipping this device\e[0m"
-			keys_not_synced='1'
-			bt_devices_not_synced+="- bluetooth controller: ${bt_controller_macaddr} \ bluetooth device: ${bt_device_macaddr} - ${bt_device_name}\n"
 			skip='true'
 			break
 		elif [[ "${selected_key}" -eq '1' ]]; then
@@ -386,34 +412,35 @@ function bt_keys_sync_from_windows() {
 
 	echo -e "\e[1;33m		* updating linux key...\e[0m"
 	bt_keys_sync_from_os='windows'
-	keys_updated_linux='1'
+	check_sudo
+	sudo cp "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info" "${tmp_dir}/${tmp_info_new}"
 	if [[ "${bt_device_type}" = 'standard' ]]; then
 		check_sudo
-		sudo sed -i "s/${key_lk_linux}/${key_lk_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+		sudo sed -i "s/${key_lk_linux}/${key_lk_windows}/g" "${tmp_dir}/${tmp_info_new}"
 	elif [[ "${bt_device_type}" = 'ble' ]]; then
 		if [[ "${key_irk_linux}" != "${key_irk_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_irk_linux}/${key_irk_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+			sudo sed -i "s/${key_irk_linux}/${key_irk_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_lsk_linux}" != "${key_lsk_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_lsk_linux}/${key_lsk_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+			sudo sed -i "s/${key_lsk_linux}/${key_lsk_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_ltk_linux}" != "${key_ltk_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_ltk_linux}/${key_ltk_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+			sudo sed -i "s/${key_ltk_linux}/${key_ltk_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_ediv_linux}" != "${key_ediv_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_ediv_linux}/${key_ediv_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+			sudo sed -i "s/${key_ediv_linux}/${key_ediv_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_rand_linux}" != "${key_rand_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_rand_linux}/${key_rand_windows}/g" "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info"
+			sudo sed -i "s/${key_rand_linux}/${key_rand_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 	fi
 	check_sudo
-	bt_device_info="$(sudo cat "/var/lib/bluetooth/${bt_controller_macaddr}/${bt_device_macaddr}/info" 2>/dev/null)"
+	bt_device_info="$(sudo cat "${tmp_dir}/${tmp_info_new}" 2>/dev/null)"
 	get_bt_keys_linux
 }
 
@@ -421,42 +448,46 @@ function bt_keys_sync_from_linux() {
 
 	echo -e "\e[1;33m		* updating windows registry key...\e[0m"
 	bt_keys_sync_from_os='linux'
-	keys_updated_windows='1'
+	bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_device_windows}]"/,/^$/")"
+	cp "${tmp_dir}/${tmp_reg}" "${tmp_dir}/${tmp_reg_new}"
 	if [[ "${bt_device_type}" = 'standard' ]]; then
-		key_lk_linux_reg="$(echo ${key_lk_linux:0:2},${key_lk_linux:2:2},${key_lk_linux:4:2},${key_lk_linux:6:2},${key_lk_linux:8:2},${key_lk_linux:10:2},${key_lk_linux:12:2},${key_lk_linux:14:2},${key_lk_linux:16:2},${key_lk_linux:18:2},${key_lk_linux:20:2},${key_lk_linux:22:2},${key_lk_linux:24:2},${key_lk_linux:26:2},${key_lk_linux:28:2},${key_lk_linux:30:2} | tr '[:upper:]' '[:lower:]')"
-		key_lk_windows_reg="$(echo ${key_lk_windows:0:2},${key_lk_windows:2:2},${key_lk_windows:4:2},${key_lk_windows:6:2},${key_lk_windows:8:2},${key_lk_windows:10:2},${key_lk_windows:12:2},${key_lk_windows:14:2},${key_lk_windows:16:2},${key_lk_windows:18:2},${key_lk_windows:20:2},${key_lk_windows:22:2},${key_lk_windows:24:2},${key_lk_windows:26:2},${key_lk_windows:28:2},${key_lk_windows:30:2} | tr '[:upper:]' '[:lower:]')"
+		key_lk_linux_reg="$(echo "${key_lk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')"
 		check_sudo
-		sudo sed -i "s/\"${bt_device_windows}\"=hex:${key_lk_windows_reg}/\"${bt_device_windows}\"=hex:${key_lk_linux_reg}/g" "${tmp_dir}/${tmp_reg}"
+		sudo sed -i "s/\"${bt_device_windows}\"=hex:${key_lk_windows_reg}/\"${bt_device_windows}\"=hex:${key_lk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 	elif [[ "${bt_device_type}" = 'ble' ]]; then
 		if [[ "${key_irk_linux}" != "${key_irk_windows}" ]]; then
-			key_irk_linux_reg="$(echo ${key_irk_linux:0:2},${key_irk_linux:2:2},${key_irk_linux:4:2},${key_irk_linux:6:2},${key_irk_linux:8:2},${key_irk_linux:10:2},${key_irk_linux:12:2},${key_irk_linux:14:2},${key_irk_linux:16:2},${key_irk_linux:18:2},${key_irk_linux:20:2},${key_irk_linux:22:2},${key_irk_linux:24:2},${key_irk_linux:26:2},${key_irk_linux:28:2},${key_irk_linux:30:2} | tr '[:upper:]' '[:lower:]')"
-			key_irk_windows_reg="$(echo ${key_irk_windows:0:2},${key_irk_windows:2:2},${key_irk_windows:4:2},${key_irk_windows:6:2},${key_irk_windows:8:2},${key_irk_windows:10:2},${key_irk_windows:12:2},${key_irk_windows:14:2},${key_irk_windows:16:2},${key_irk_windows:18:2},${key_irk_windows:20:2},${key_irk_windows:22:2},${key_irk_windows:24:2},${key_irk_windows:26:2},${key_irk_windows:28:2},${key_irk_windows:30:2} | tr '[:upper:]' '[:lower:]')"
-			sudo sed -i "s/\"IRK\"=hex:${key_irk_windows_reg}/\"IRK\"=hex:${key_irk_linux_reg}/g" "${tmp_dir}/${tmp_reg}"
+			key_irk_linux_reg="$(echo "${key_irk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			check_sudo
+			sudo sed -i "s/\"IRK\"=hex:${key_irk_windows_reg}/\"IRK\"=hex:${key_irk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_lsk_linux}" != "${key_lsk_windows}" ]]; then
-			key_lsk_linux_reg="$(echo ${key_lsk_linux:0:2},${key_lsk_linux:2:2},${key_lsk_linux:4:2},${key_lsk_linux:6:2},${key_lsk_linux:8:2},${key_lsk_linux:10:2},${key_lsk_linux:12:2},${key_lsk_linux:14:2},${key_lsk_linux:16:2},${key_lsk_linux:18:2},${key_lsk_linux:20:2},${key_lsk_linux:22:2},${key_lsk_linux:24:2},${key_lsk_linux:26:2},${key_lsk_linux:28:2},${key_lsk_linux:30:2} | tr '[:upper:]' '[:lower:]')"
-			key_lsk_windows_reg="$(echo ${key_lsk_windows:0:2},${key_lsk_windows:2:2},${key_lsk_windows:4:2},${key_lsk_windows:6:2},${key_lsk_windows:8:2},${key_lsk_windows:10:2},${key_lsk_windows:12:2},${key_lsk_windows:14:2},${key_lsk_windows:16:2},${key_lsk_windows:18:2},${key_lsk_windows:20:2},${key_lsk_windows:22:2},${key_lsk_windows:24:2},${key_lsk_windows:26:2},${key_lsk_windows:28:2},${key_lsk_windows:30:2} | tr '[:upper:]' '[:lower:]')"
-			sudo sed -i "s/\"CSRK\"=hex:${key_lsk_windows_reg}/\"CSRK\"=hex:${key_lsk_linux_reg}/g" "${tmp_dir}/${tmp_reg}"
+			key_lsk_linux_reg="$(echo "${key_lsk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			check_sudo
+			sudo sed -i "s/\"CSRK\"=hex:${key_lsk_windows_reg}/\"CSRK\"=hex:${key_lsk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_ltk_linux}" != "${key_ltk_windows}" ]]; then
-			key_ltk_linux_reg="$(echo ${key_ltk_linux:0:2},${key_ltk_linux:2:2},${key_ltk_linux:4:2},${key_ltk_linux:6:2},${key_ltk_linux:8:2},${key_ltk_linux:10:2},${key_ltk_linux:12:2},${key_ltk_linux:14:2},${key_ltk_linux:16:2},${key_ltk_linux:18:2},${key_ltk_linux:20:2},${key_ltk_linux:22:2},${key_ltk_linux:24:2},${key_ltk_linux:26:2},${key_ltk_linux:28:2},${key_ltk_linux:30:2} | tr '[:upper:]' '[:lower:]')"
-			key_ltk_windows_reg="$(echo ${key_ltk_windows:0:2},${key_ltk_windows:2:2},${key_ltk_windows:4:2},${key_ltk_windows:6:2},${key_ltk_windows:8:2},${key_ltk_windows:10:2},${key_ltk_windows:12:2},${key_ltk_windows:14:2},${key_ltk_windows:16:2},${key_ltk_windows:18:2},${key_ltk_windows:20:2},${key_ltk_windows:22:2},${key_ltk_windows:24:2},${key_ltk_windows:26:2},${key_ltk_windows:28:2},${key_ltk_windows:30:2} | tr '[:upper:]' '[:lower:]')"
-			sudo sed -i "s/\"LTK\"=hex:${key_ltk_windows_reg}/\"LTK\"=hex:${key_ltk_linux_reg}/g" "${tmp_dir}/${tmp_reg}"
+			key_ltk_linux_reg=="$(echo "${key_ltk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			check_sudo
+			sudo sed -i "s/\"LTK\"=hex:${key_ltk_windows_reg}/\"LTK\"=hex:${key_ltk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_ediv_linux}" != "${key_ediv_windows}" ]]; then
-			true
-			#key_ediv_linux_reg="${key_ediv_linux}" ############################## to be implemented
-			#key_ediv_windows_reg="${key_ediv_windows}" ############################## to be implemented
-			#sudo sed -i "s/\"EDIV\"=${key_ediv_windows_reg}/\"EDIV\"=${key_ediv_linux_reg}/g" "${tmp_dir}/${tmp_reg}" ############################## to be implemented
+			#key_ediv_linux_reg= # to review
+			check_sudo
+			sudo sed -i "s/\"EDIV\"=dword:${key_ediv_windows_reg}/\"EDIV\"=dword:${key_ediv_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_rand_linux}" != "${key_rand_windows}" ]]; then
-			true
-			#key_rand_linux_reg="${key_rand_linux}" ############################## to be implemented
-			#key_rand_windows_reg="${key_rand_windows}" ############################## to be implemented
-			#sudo sed -i "s/\"ERand\"=${key_rand_windows_reg}/\"ERand\"=${key_rand_linux_reg}/g" "${tmp_dir}/${tmp_reg}" ############################## to be implemented
+			key_rand_linux_hex="$(printf '%x\n' "${key_rand_linux}" | sed 's/.\{2\}/&,/g')" # to review
+			key_rand_linux_reverse="$(echo "${key_rand_linux_hex::-1}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')" # to review
+			key_rand_linux_reg="${key_rand_linux_reverse//' '/$','}" # to review
+			check_sudo
+			sudo sed -i "s/\"ERand\"=hex(b):${key_rand_windows_reg}/\"ERand\"=hex(b):${key_rand_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 	fi
-	bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_device_windows}]"/,/^$/")"
+	if [[ "${bt_device_type_windows}" = 'standard' ]]; then
+		bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg_new}" | sed 's/\^M//g' | awk "/"${bt_controller_windows}]"/,/^$/" | grep "${bt_device_windows}" | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+	elif [[ "${bt_device_type_windows}" = 'ble' ]]; then
+		bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg_new}" | sed 's/\^M//g' | awk "/"${bt_device_windows}]"/,/^$/")"
+	fi
 	get_bt_keys_windows
 }
 
@@ -479,7 +510,7 @@ function bt_keys_sync() {
 	if sudo reged -x "${tmp_dir}/${tmp_hive}" "HKEY_LOCAL_MACHINE\SYSTEM" "\\${control_set}\Services\BTHPORT\Parameters\Keys" "${tmp_dir}/${tmp_reg}"; then
 		if [[ -f "${tmp_dir}/${tmp_reg}" ]] && cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | grep -Fq "HKEY_LOCAL_MACHINE\SYSTEM\\${control_set}\Services\BTHPORT\Parameters\Keys"; then
 			check_bt_controllers
-			if [[ "${keys_not_synced}" != '1' ]] && [[ "${noerror}" = '1' ]] && [[ "${keys_updated_linux}" != '1' ]] && [[ "${keys_updated_windows}" != '1' ]]; then
+			if [[ -z "${bt_devices_not_synced}" ]] && [[ "${noerror}" = '1' ]] && [[ -z "${bt_devices_sync_from_linux}" ]] && [[ -z "${bt_devices_sync_from_windows}" ]]; then
 				if [[ "${nokey_warn}" = '1' ]]; then
 					color='1;33'
 				else
@@ -498,7 +529,7 @@ function bt_keys_sync() {
 					echo -e "\e[1;33m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;33m----------------------------------------------------------------------\e[0m"
 				fi
-				if [[ "${keys_not_synced}" = '1' ]]; then
+				if [[ -n "${bt_devices_not_synced}" ]]; then
 					echo
 					echo -e "\e[1;33m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;33m----------------------------------------------------------------------\e[0m"
@@ -507,7 +538,7 @@ function bt_keys_sync() {
 					echo -e "\e[1;33m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;33m----------------------------------------------------------------------\e[0m"
 				fi
-				if [[ "${keys_updated_linux}" = '1' ]]; then
+				if [[ -n "${bt_devices_sync_from_windows}" ]]; then
 					echo
 					echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
@@ -526,7 +557,7 @@ function bt_keys_sync() {
 					echo -e "\e[1;32m----------------------------------------------------------------------\e[0m"
 				fi
 
-				if [[ "${keys_updated_windows}" = '1' ]]; then
+				if [[ -n "${bt_devices_sync_from_linux}" ]]; then
 					echo
 					echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
 					echo -e "\e[1;31m----------------------------------------------------------------------\e[0m"
@@ -748,6 +779,10 @@ function cleaning() {
 			check_sudo
 			sudo rm "${tmp_dir}/${tmp_reg}"
 		fi
+		if [[ -f "${tmp_dir}/${tmp_reg_new}" ]]; then
+			check_sudo
+			sudo rm "${tmp_dir}/${tmp_reg_new}"
+		fi
 		if [[ -f "${tmp_dir}/${tmp_devs}" ]]; then
 			check_sudo
 			sudo rm "${tmp_dir}/${tmp_devs}"
@@ -756,10 +791,14 @@ function cleaning() {
 			check_sudo
 			sudo rm "${tmp_dir}/${tmp_ver}"
 		fi
+		if [[ -f "${tmp_dir}/${tmp_info_new}" ]]; then
+			check_sudo
+			sudo rm "${tmp_dir}/${tmp_info_new}"
+		fi
 	fi
 	sudo -k
 
-	if ! grep -Eqs "^Exec=${bt_keys_sync_name}$" $HOME/.local/share/applications/bt-keys-sync.desktop && [[ "${EUID}" != '0' ]]; then
+	if ! grep -Eqs "^Exec=${bt_keys_sync_name}$" "$HOME/.local/share/applications/bt-keys-sync.desktop" && [[ "${EUID}" != '0' ]]; then
 		echo
 		echo -e "\e[1;34m-----------------------------------------------------------------------------\e[0m"
 		echo -e "\e[1;34m* Creating bt-keys-sync menu item in Categories AudioVideo, Audio and Utility\e[0m"
@@ -799,7 +838,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.4.0
+# Version:    0.3.9
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -855,10 +894,12 @@ printf "\033]2;${bt_keys_sync_name}\a"
 sudo -k
 myuser="${USER}"
 tmp_dir='/tmp'
-tmp_reg='bt_keys.reg'
-tmp_devs='bt_devs.reg'
-tmp_ver='bt_ver.reg'
+tmp_reg='bt_reg_keys.reg'
+tmp_reg_new='bt_reg_keys_new.reg'
+tmp_devs='bt_reg_devs.reg'
+tmp_ver='bt_reg_ver.reg'
 tmp_hive='SYSTEM_hive_win'
+tmp_info_new='bt_info_keys_new'
 control_set='ControlSet001'
 keys_ask='true'
 
