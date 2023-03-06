@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.9
+# Version:    0.3.10
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -179,7 +179,7 @@ function check_bt_device_type_linux() {
 	unset bt_device_type_linux
 	if echo "${bt_device_info}" | grep -Eq "^\[LinkKey\]$"; then
 		bt_device_type_linux='standard'
-	elif [[ "$(echo "${bt_device_info}" | grep -E "^(\[IdentityResolvingKey\]|\[LocalSignatureKey\]|\[LongTermKey\]|EDiv|Rand)" | wc -l)" = '5' ]]; then
+	elif [[ "$(echo "${bt_device_info}" | grep -E "^(\[IdentityResolvingKey\]|\[LocalSignatureKey\]|\[LongTermKey\]|EncSize|EDiv|Rand)" | wc -l)" -ge '5' ]]; then
 		bt_device_type_linux='ble'
 	fi
 }
@@ -188,7 +188,7 @@ function check_bt_device_type_windows() {
 
 	unset bt_device_type_windows
 	bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_device_windows}]"/,/^$/")"
-	if [[ "$(echo "${bt_device_info_keys_reg}" | grep -E "^(\"IRK\"|\"CSRK\"|\"EDIV\"|\"LTK\"|\"ERand\")" | wc -l)" = '5' ]]; then
+	if [[ "$(echo "${bt_device_info_keys_reg}" | grep -E "^(\"IRK\"|\"CSRK\"|\"LTK\"|\"KeyLength\"|\"EDIV\"|\"ERand\")" | wc -l)" -ge '5' ]]; then
 		bt_device_type_windows='ble'
 	else
 		bt_device_type_windows='standard'
@@ -209,6 +209,7 @@ function get_bt_keys_linux() {
 		key_irk_linux="$(echo "${bt_device_info}" | awk "/"\\[IdentityResolvingKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
 		key_lsk_linux="$(echo "${bt_device_info}" | awk "/"\\[LocalSignatureKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
 		key_ltk_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
+		key_es_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EncSize=' | grep -Eo "([[:digit:]])+$")" # to review
 		key_ediv_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EDiv=' | grep -Eo "([[:digit:]])+$")" # to review
 		key_rand_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Rand=' | grep -Eo "([[:digit:]])+$")" # to review
 		if [[ -z "${key_irk_linux}" ]]; then
@@ -228,6 +229,12 @@ function get_bt_keys_linux() {
 			echo -e "\e[1;31m		* linux   LTK  key not found. Please try to remove and pair again this device in linux.\e[0m"
 		else
 			echo -e "\e[0;32m		- linux   LTK  key is \e[1;34m${key_ltk_linux}\e[0m"
+		fi
+		if [[ -z "${key_es_linux}" ]]; then
+			nokey='1'
+			echo -e "\e[1;31m		* linux   ES   key not found. Please try to remove and pair again this device in linux.\e[0m"
+		else
+			echo -e "\e[0;32m		- linux   ES   key is \e[1;35m${key_es_linux}\e[0m"
 		fi
 		if [[ -z "${key_ediv_linux}" ]]; then
 			nokey='1'
@@ -264,8 +271,12 @@ function get_bt_keys_windows() {
 
 		key_ltk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"LTK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
 		key_ltk_windows="$(echo ${key_ltk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
-	
-		key_ediv_windows="$(echo "${bt_device_info_keys_reg}" | grep '^"EDIV"' | awk -F':' '{print $2}')" # to review
+
+		key_es_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"KeyLength"' | awk -F':' '{print $2}')" # to review
+		key_es_windows="$(echo "obase=10; ibase=16; ${key_es_windows_reg}" | bc)" # to review
+
+		key_ediv_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"EDIV"' | awk -F':' '{print $2}')" # to review
+		key_ediv_windows="$(echo "obase=10; ibase=16; ${key_ediv_windows_reg}" | bc)" # to review
 
 		key_rand_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"ERand"' | awk -F':' '{print $2}')" # to review
 		key_rand_windows="$(echo "${key_rand_windows_reg}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | tr '[:lower:]' '[:upper:]')" # to review
@@ -288,6 +299,12 @@ function get_bt_keys_windows() {
 			echo -e "\e[1;31m		* windows LTK  key not found. Please try to remove and pair again this device in windows.\e[0m"
 		else
 			echo -e "\e[0;32m		- windows LTK  key is \e[1;34m${key_ltk_windows}\e[0m"
+		fi
+		if [[ -z "${key_es_windows}" ]]; then
+			nokey='1'
+			echo -e "\e[1;31m		* windows ES   key not found. Please try to remove and pair again this device in windows.\e[0m"
+		else
+			echo -e "\e[0;32m		- windows ES   key is \e[1;35m${key_es_windows}\e[0m"
 		fi
 		if [[ -z "${key_ediv_windows}" ]]; then
 			nokey='1'
@@ -319,6 +336,9 @@ function compare_bt_keys() {
 			different='true'
 		fi
 		if [[ "${key_ltk_linux}" != "${key_ltk_windows}" ]]; then
+			different='true'
+		fi
+		if [[ "${key_es_linux}" != "${key_es_windows}" ]]; then
 			different='true'
 		fi
 		if [[ "${key_ediv_linux}" != "${key_ediv_windows}" ]]; then
@@ -420,23 +440,27 @@ function bt_keys_sync_from_windows() {
 	elif [[ "${bt_device_type}" = 'ble' ]]; then
 		if [[ "${key_irk_linux}" != "${key_irk_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_irk_linux}/${key_irk_windows}/g" "${tmp_dir}/${tmp_info_new}"
+			sudo sed -i "s/Key=${key_irk_linux}/Key=${key_irk_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_lsk_linux}" != "${key_lsk_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_lsk_linux}/${key_lsk_windows}/g" "${tmp_dir}/${tmp_info_new}"
+			sudo sed -i "s/Key=${key_lsk_linux}/Key=${key_lsk_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_ltk_linux}" != "${key_ltk_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_ltk_linux}/${key_ltk_windows}/g" "${tmp_dir}/${tmp_info_new}"
+			sudo sed -i "s/Key=${key_ltk_linux}/Key=${key_ltk_windows}/g" "${tmp_dir}/${tmp_info_new}"
+		fi
+		if [[ "${key_es_linux}" != "${key_es_windows}" ]]; then
+			check_sudo
+			sudo sed -i "s/EncSize=${key_es_linux}/EncSize=${key_es_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_ediv_linux}" != "${key_ediv_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_ediv_linux}/${key_ediv_windows}/g" "${tmp_dir}/${tmp_info_new}"
+			sudo sed -i "s/EDiv=${key_ediv_linux}/EDiv=${key_ediv_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 		if [[ "${key_rand_linux}" != "${key_rand_windows}" ]]; then
 			check_sudo
-			sudo sed -i "s/${key_rand_linux}/${key_rand_windows}/g" "${tmp_dir}/${tmp_info_new}"
+			sudo sed -i "s/Rand=${key_rand_linux}/Rand=${key_rand_windows}/g" "${tmp_dir}/${tmp_info_new}"
 		fi
 	fi
 	check_sudo
@@ -466,12 +490,23 @@ function bt_keys_sync_from_linux() {
 			sudo sed -i "s/\"CSRK\"=hex:${key_lsk_windows_reg}/\"CSRK\"=hex:${key_lsk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_ltk_linux}" != "${key_ltk_windows}" ]]; then
-			key_ltk_linux_reg=="$(echo "${key_ltk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			key_ltk_linux_reg="$(echo "${key_ltk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
 			check_sudo
 			sudo sed -i "s/\"LTK\"=hex:${key_ltk_windows_reg}/\"LTK\"=hex:${key_ltk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
+		if [[ "${key_es_linux}" != "${key_es_windows}" ]]; then
+			key_es_linux_reg="$(printf '%x\n' "${key_es_linux}")" # to review
+			until [[ "$(echo "${key_es_linux_reg}" | wc -m)" = '8' ]]; do
+				key_es_linux_reg="0${key_es_linux_reg}"
+			done
+			check_sudo
+			sudo sed -i "s/\"KeyLength\"=dword:${key_es_linux_reg}/\"KeyLength\"=dword:${key_es_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
+		fi
 		if [[ "${key_ediv_linux}" != "${key_ediv_windows}" ]]; then
-			#key_ediv_linux_reg= # to review
+			key_ediv_linux_reg="$(printf '%x\n' "${key_ediv_linux}")" # to review
+			until [[ "$(echo "${key_ediv_linux_reg}" | wc -m)" = '8' ]]; do
+				key_ediv_linux_reg="0${key_ediv_linux_reg}"
+			done
 			check_sudo
 			sudo sed -i "s/\"EDIV\"=dword:${key_ediv_windows_reg}/\"EDIV\"=dword:${key_ediv_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
@@ -838,7 +873,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.9
+# Version:    0.3.10
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
