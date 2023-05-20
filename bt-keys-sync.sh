@@ -2,7 +2,7 @@
 
 # bt-keys-sync
 
-# Version:    0.3.10
+# Version:    0.4.0
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -124,9 +124,7 @@ function check_bt_devices() {
 			nokey='1'
 		else
 			check_bt_device_type_linux
-			if [[ "${bt_device_type_linux}" = 'standard' ]]; then # delete after BLE support will be implemented
-				get_bt_keys_linux
-			fi # delete after BLE support will be implemented
+			get_bt_keys_linux
 		fi
 		if [[ -z "${bt_device_windows}" ]]; then
 			echo -e "\e[1;31m		* bluetooth device not found in windows. Please pair this device in windows.\e[0m"
@@ -138,9 +136,7 @@ function check_bt_devices() {
 			elif [[ "${bt_device_type_windows}" = 'ble' ]]; then
 				bt_device_info_keys_reg="$(cat -v "${tmp_dir}/${tmp_reg}" | sed 's/\^M//g' | awk "/"${bt_device_windows}]"/,/^$/")"
 			fi
-			if [[ "${bt_device_type_windows}" = 'standard' ]]; then # delete after BLE support will be implemented
-				get_bt_keys_windows
-			fi # delete after BLE support will be implemented
+			get_bt_keys_windows
 		fi
 		if [[ "${bt_device_type_linux}" = 'standard' ]] && [[ "${bt_device_type_windows}" = 'standard' ]]; then
 			bt_device_type='standard'
@@ -150,15 +146,6 @@ function check_bt_devices() {
 			echo -e "\e[1;31m		* error: mismatch between device type!\e[0m"
 			continue
 		fi
-		##############################################################
-		# delete after BLE support will be implemented
-		if [[ "${bt_device_type_linux}" = 'ble' ]] || [[ "${bt_device_type_windows}" = 'ble' ]]; then
-			echo -e "\e[1;31m		* this device appear to be a Bluetooth Low Energy Device (BLE)\e[0m"
-			echo -e "\e[1;31m		* support for Bluetooth Low Energy Devices is currently unimplemented\e[0m"
-			echo -e "\e[1;31m		* please take a look at: \e[1;34mhttps://github.com/KeyofBlueS/bt-keys-sync/issues/13\e[0m"
-			continue
-		fi
-		##############################################################
 		if [[ "${nokey}" = '1' ]]; then
 			nokey_warn='1'
 			continue
@@ -206,17 +193,17 @@ function get_bt_keys_linux() {
 			echo "		- linux   LK   key is ${key_lk_linux}"
 		fi
 	elif [[ "${bt_device_type_linux}" = 'ble' ]]; then
-		key_irk_linux="$(echo "${bt_device_info}" | awk "/"\\[IdentityResolvingKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
-		key_lsk_linux="$(echo "${bt_device_info}" | awk "/"\\[LocalSignatureKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
-		key_ltk_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")" # to review
-		key_es_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EncSize=' | grep -Eo "([[:digit:]])+$")" # to review
-		key_ediv_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EDiv=' | grep -Eo "([[:digit:]])+$")" # to review
-		key_rand_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Rand=' | grep -Eo "([[:digit:]])+$")" # to review
+		key_irk_linux="$(echo "${bt_device_info}" | awk "/"\\[IdentityResolvingKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
+		key_lsk_linux="$(echo "${bt_device_info}" | awk "/"\\[LocalSignatureKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
+		key_ltk_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Key=' | grep -Eo "([[:xdigit:]]){32}$")"
+		key_es_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EncSize=' | grep -Eo "([[:digit:]])+$")"
+		key_ediv_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^EDiv=' | grep -Eo "([[:digit:]])+$")"
+		key_rand_linux="$(echo "${bt_device_info}" | awk "/"\\[LongTermKey\\]"/,/^$/" | grep '^Rand=' | grep -Eo "([[:digit:]])+$")"
 		if [[ -z "${key_irk_linux}" ]]; then
 			nokey='1'
 			echo -e "\e[1;31m		* linux   IRK  key not found. Please try to remove and pair again this device in linux.\e[0m"
 		else
-			echo -e "\e[0;32m		- linux   IRK  key is \e[0;32m${key_irk_linux}\e[0m"
+			echo -e "\e[0;32m		- linux   IRK  key is \e[0;37m${key_irk_linux}\e[0m"
 		fi
 		if [[ -z "${key_lsk_linux}" ]]; then
 			nokey='1'
@@ -240,7 +227,7 @@ function get_bt_keys_linux() {
 			nokey='1'
 			echo -e "\e[1;31m		* linux   EDIV key not found. Please try to remove and pair again this device in linux.\e[0m"
 		else
-			echo -e "\e[0;32m		- linux   EDIV key is \e[1;35m${key_ediv_linux}\e[0m"
+			echo -e "\e[0;32m		- linux   EDIV key is \e[1;33m${key_ediv_linux}\e[0m"
 		fi
 		if [[ -z "${key_rand_linux}" ]]; then
 			nokey='1'
@@ -263,30 +250,30 @@ function get_bt_keys_windows() {
 			echo "		- windows LK   key is ${key_lk_windows}"
 		fi
 	elif [[ "${bt_device_type_windows}" = 'ble' ]]; then
-		key_irk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"IRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
-		key_irk_windows="$(echo ${key_irk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
+		key_irk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"IRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+		key_irk_windows="$(echo ${key_irk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')"
 
-		key_lsk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"CSRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
-		key_lsk_windows="$(echo ${key_lsk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
+		key_lsk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"CSRK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+		key_lsk_windows="$(echo ${key_lsk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')"
 
-		key_ltk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"LTK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")" # to review
-		key_ltk_windows="$(echo ${key_ltk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')" # to review
+		key_ltk_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"LTK"' | grep -Eo "([[:xdigit:]]{1,2},){15}[[:xdigit:]]{2}$")"
+		key_ltk_windows="$(echo ${key_ltk_windows_reg//,/$''} | tr '[:lower:]' '[:upper:]')"
 
-		key_es_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"KeyLength"' | awk -F':' '{print $2}')" # to review
-		key_es_windows="$(echo "obase=10; ibase=16; ${key_es_windows_reg}" | bc)" # to review
+		key_es_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"KeyLength"' | awk -F':' '{print $2}')"
+		key_es_windows="$(echo "obase=10; ibase=16; ${key_es_windows_reg^^}" | bc)"
 
-		key_ediv_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"EDIV"' | awk -F':' '{print $2}')" # to review
-		key_ediv_windows="$(echo "obase=10; ibase=16; ${key_ediv_windows_reg}" | bc)" # to review
+		key_ediv_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"EDIV"' | awk -F':' '{print $2}')"
+		key_ediv_windows="$(echo "obase=10; ibase=16; ${key_ediv_windows_reg^^}" | bc)"
 
-		key_rand_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"ERand"' | awk -F':' '{print $2}')" # to review
-		key_rand_windows="$(echo "${key_rand_windows_reg}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | tr '[:lower:]' '[:upper:]')" # to review
-		key_rand_windows="$(echo "obase=10; ibase=16; ${key_rand_windows//' '/$''}" | bc)" # to review
+		key_rand_windows_reg="$(echo "${bt_device_info_keys_reg}" | grep '^"ERand"' | awk -F':' '{print $2}')"
+		key_rand_windows="$(echo "${key_rand_windows_reg}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }' | tr '[:lower:]' '[:upper:]')"
+		key_rand_windows="$(echo "obase=10; ibase=16; ${key_rand_windows//' '/$''}" | bc)"
 
 		if [[ -z "${key_irk_windows}" ]]; then
 			nokey='1'
 			echo -e "\e[1;31m		* windows IRK  key not found. Please try to remove and pair again this device in windows.\e[0m"
 		else
-			echo -e "\e[0;32m		- windows IRK  key is \e[0;32m${key_irk_windows}\e[0m"
+			echo -e "\e[0;32m		- windows IRK  key is \e[0;37m${key_irk_windows}\e[0m"
 		fi
 		if [[ -z "${key_lsk_windows}" ]]; then
 			nokey='1'
@@ -310,7 +297,7 @@ function get_bt_keys_windows() {
 			nokey='1'
 			echo -e "\e[1;31m		* windows EDIV key not found. Please try to remove and pair again this device in windows.\e[0m"
 		else
-			echo -e "\e[0;32m		- windows EDIV key is \e[1;35m${key_ediv_windows}\e[0m"
+			echo -e "\e[0;32m		- windows EDIV key is \e[1;33m${key_ediv_windows}\e[0m"
 		fi
 		if [[ -z "${key_rand_windows}" ]]; then
 			nokey='1'
@@ -480,40 +467,40 @@ function bt_keys_sync_from_linux() {
 		sudo sed -i "s/\"${bt_device_windows}\"=hex:${key_lk_windows_reg}/\"${bt_device_windows}\"=hex:${key_lk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 	elif [[ "${bt_device_type}" = 'ble' ]]; then
 		if [[ "${key_irk_linux}" != "${key_irk_windows}" ]]; then
-			key_irk_linux_reg="$(echo "${key_irk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			key_irk_linux_reg="$(echo "${key_irk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')"
 			check_sudo
 			sudo sed -i "s/\"IRK\"=hex:${key_irk_windows_reg}/\"IRK\"=hex:${key_irk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_lsk_linux}" != "${key_lsk_windows}" ]]; then
-			key_lsk_linux_reg="$(echo "${key_lsk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			key_lsk_linux_reg="$(echo "${key_lsk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')"
 			check_sudo
 			sudo sed -i "s/\"CSRK\"=hex:${key_lsk_windows_reg}/\"CSRK\"=hex:${key_lsk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_ltk_linux}" != "${key_ltk_windows}" ]]; then
-			key_ltk_linux_reg="$(echo "${key_ltk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')" # to review
+			key_ltk_linux_reg="$(echo "${key_ltk_linux,,}" | sed 's/.\{2\}/&,/g' | sed 's/.$//')"
 			check_sudo
 			sudo sed -i "s/\"LTK\"=hex:${key_ltk_windows_reg}/\"LTK\"=hex:${key_ltk_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_es_linux}" != "${key_es_windows}" ]]; then
-			key_es_linux_reg="$(printf '%x\n' "${key_es_linux}")" # to review
-			until [[ "$(echo "${key_es_linux_reg}" | wc -m)" = '8' ]]; do
+			key_es_linux_reg="$(printf '%x\n' "${key_es_linux}")"
+			until [[ "$(printf "${key_es_linux_reg}" | wc -m)" = '8' ]]; do
 				key_es_linux_reg="0${key_es_linux_reg}"
 			done
 			check_sudo
-			sudo sed -i "s/\"KeyLength\"=dword:${key_es_linux_reg}/\"KeyLength\"=dword:${key_es_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
+			sudo sed -i "s/\"KeyLength\"=dword:${key_es_windows_reg}/\"KeyLength\"=dword:${key_es_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_ediv_linux}" != "${key_ediv_windows}" ]]; then
-			key_ediv_linux_reg="$(printf '%x\n' "${key_ediv_linux}")" # to review
-			until [[ "$(echo "${key_ediv_linux_reg}" | wc -m)" = '8' ]]; do
+			key_ediv_linux_reg="$(printf '%x\n' "${key_ediv_linux}")"
+			until [[ "$(printf "${key_ediv_linux_reg}" | wc -m)" = '8' ]]; do
 				key_ediv_linux_reg="0${key_ediv_linux_reg}"
 			done
 			check_sudo
 			sudo sed -i "s/\"EDIV\"=dword:${key_ediv_windows_reg}/\"EDIV\"=dword:${key_ediv_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
 		if [[ "${key_rand_linux}" != "${key_rand_windows}" ]]; then
-			key_rand_linux_hex="$(printf '%x\n' "${key_rand_linux}" | sed 's/.\{2\}/&,/g')" # to review
-			key_rand_linux_reverse="$(echo "${key_rand_linux_hex::-1}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')" # to review
-			key_rand_linux_reg="${key_rand_linux_reverse//' '/$','}" # to review
+			key_rand_linux_hex="$(printf '%x\n' "${key_rand_linux}" | sed 's/.\{2\}/&,/g')"
+			key_rand_linux_reverse="$(echo "${key_rand_linux_hex::-1}" | awk -F',' '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')"
+			key_rand_linux_reg="${key_rand_linux_reverse//' '/$','}"
 			check_sudo
 			sudo sed -i "s/\"ERand\"=hex(b):${key_rand_windows_reg}/\"ERand\"=hex(b):${key_rand_linux_reg}/g" "${tmp_dir}/${tmp_reg_new}"
 		fi
@@ -535,10 +522,10 @@ function bt_keys_sync() {
 	fi
 
 	if ! [[ -f "${tmp_dir}/${tmp_hive}" ]] || ! cmp -s "${system_hive}" "${tmp_dir}/${tmp_hive}"; then
-			if ! cp "${system_hive}" "${tmp_dir}/${tmp_hive}"; then
-				echo -e "\e[1;31m* error while copying windows SYSTEM registry hive to ${tmp_dir}/${tmp_hive}\e[0m"
-				exit 1
-			fi
+		if ! cp "${system_hive}" "${tmp_dir}/${tmp_hive}"; then
+			echo -e "\e[1;31m* error while copying windows SYSTEM registry hive to ${tmp_dir}/${tmp_hive}\e[0m"
+			exit 1
+		fi
 	fi
 
 	check_sudo
@@ -873,7 +860,7 @@ function givemehelp() {
 	echo "
 # bt-keys-sync
 
-# Version:    0.3.10
+# Version:    0.4.0
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -887,10 +874,6 @@ This script is intended to be used in a linux\windows multi boot scenario. It wi
 Importing the bluetooth pairing keys from windows to linux is a safe procedure.
 This could not be true for the opposite, importing the bluetooth pairing keys from linux to windows is risky as it could mess with the windows registry, so the recommended procedure is to pair your bluetooth devices in linux, then boot into windows and pair them there (if yet paired, remove them first) so windows has the newer working keys, then boot into linux and run ${bt_keys_sync_name} and always choose \"windows key\" when prompted \"which pairing key you want to use?\" (or use option --windows-keys).
 If you, at your own risk, decide to import the bluetooth pairing keys from linux to windows (this has been tested on windows 10 only) a backup of the windows SYSTEM registry hive file will be created, so in case of problems you could try to restore it.
-
-### About Bluetooth Low Energy (BLE)
-Bluetooth Low Energy Device (BLE) can be detected, but key checks will be skipped.
-Please take a look here: https://github.com/KeyofBlueS/bt-keys-sync/issues/13
 
 This script require \"chntpw\". Install it e.g. with:
 sudo apt install chntpw
