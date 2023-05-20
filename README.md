@@ -1,6 +1,6 @@
 # bt-keys-sync
 
-# Version:    0.3.10
+# Version:    0.4.0
 # Author:     KeyofBlueS
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
@@ -22,7 +22,7 @@ Please take a look here: https://github.com/KeyofBlueS/bt-keys-sync/issues/13
 
 ### INSTALL
 ```
-curl -o /tmp/bt-keys-sync.sh 'https://raw.githubusercontent.com/KeyofBlueS/bt-keys-sync/master/bt-keys-sync.sh'
+curl -o /tmp/bt-keys-sync.sh 'https://raw.githubusercontent.com/KeyofBlueS/bt-keys-sync/ble/bt-keys-sync.sh'
 sudo mkdir -p /opt/bt-keys-sync/
 sudo mv /tmp/bt-keys-sync.sh /opt/bt-keys-sync/
 sudo chown root:root /opt/bt-keys-sync/bt-keys-sync.sh
