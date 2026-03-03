@@ -1,7 +1,7 @@
 # bt-keys-sync
 
-# Version:    0.3.10
-# Author:     KeyofBlueS
+# Version:    0.5.0
+# Author:     KeyofBlueS, DragRedSim
 # Repository: https://github.com/KeyofBlueS/bt-keys-sync
 # License:    GNU General Public License v3.0, https://opensource.org/licenses/GPL-3.0
 
@@ -23,6 +23,12 @@ Importing Bluetooth keys from Windows to Linux is generally safe. However, the r
 If you choose to import keys from Linux to Windows `(tested only on Windows 10 and 11)`, proceed at your own risk. The script will back up the Windows SYSTEM registry hive file before making changes, allowing you to restore it in case of any issues.
 
 ### About Bluetooth Low Energy (BLE)
+Basic support for BLE devices has been implemented! Currently, the only implemented transfer is FROM Windows TO Linux. Therefore, you will need to connect these devices to Linux first, reboot into Windows, connect there, and then back to Linux to run the script (matching the recommended workflow above).
+
+The script will offer a list of Windows devices when it encounters a BLE device on Linux. It will highlight (in green) any devices in Windows which share a name with the Linux device, making it easier to figure out which devices need to be selected.
+
+Windows BLE devices will appear in the list of devices, but they will not offer any options to synchronise at this point.
+
 BLE devices can be detected, but their keys will not be validated or synchronized.
 For more information on BLE handling, please refer to [this issue](https://github.com/KeyofBlueS/bt-keys-sync/issues/13).
 
@@ -41,6 +47,12 @@ This script requires the `chntpw` utility, which is used to read and modify Wind
 
 `sudo apt install chntpw`
 
+or on Arch-based systems with
+
+`sudo pacman -S chntpw`
+
+If you're wanting to use this on a SteamOS setup, you may need to run `sudo steamos-readonly disable` beforehand to allow the installation. You may also need to reinstall `chntpw` after a system update, due to the way the OS is installed and updated.
+
 ### USAGE
 Before running the script, make sure the Windows partition is mounted with read and write access.
 
@@ -48,7 +60,7 @@ To run the script, simply execute:
 
 `$ bt-keys-sync`
 
-The script will automatically search for the Windows `SYSTEM` registry hive file within common mount points such as `/media` and `/mnt`. If it cannot locate the file, you will need to manually provide the full path. This path typically looks like:
+The script will automatically search for the Windows `SYSTEM` registry hive file within common mount points such as `/media` and `/mnt`, as well as `/run/media` (for those using Arch and/or SteamOS). If it cannot locate the file, you will need to manually provide the full path. This path typically looks like:
 
 `"<windows_mount_point>/Windows/System32/config/SYSTEM"`
 
@@ -60,10 +72,11 @@ By default, the script checks ControlSet001 in the registry. You can specify a d
 
 ```
 Options:
--p, --path <system_hive_path>    Enter the full path of the windows SYSTEM registry hive file.
+-p, --path <system_hive_path>    Enter the full path of the Windows SYSTEM registry hive file.
 -c, --control-set <control_set>  Enter the control set to check. Default is 'ControlSet001'.
--l, --linux-keys                 Import bluetooth pairing keys from linux to windows without asking.
--w, --windows-keys               Import bluetooth pairing keys from windows to linux without asking.
+-l, --linux-keys                 Import bluetooth pairing keys from Linux to Windows without asking.
+-w, --windows-keys               Import bluetooth pairing keys from Windows to Linux without asking.
 -o, --only-list                  Only list bluetooth devices and pairing keys, don't do anything else.
+-d, --dry-run                    Attempt to run the full syncing sequence, apart from actually writing anything. Useful for debugging.
 -h, --help                       Show this help.
 ```
